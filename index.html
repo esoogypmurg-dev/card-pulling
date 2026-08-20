@@ -1,0 +1,2298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<title>Pokémon Card Collector — Base Set</title>
+<meta name="app-version" content="2026-08-18-F"/>
+<!-- build: trade-their-psa-v1 2026-08-13 -->
+<link rel="stylesheet" href="css/styles.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+
+</head>
+<body class="app-body home-active">
+
+<!-- ========== LOGIN SCREEN ========== -->
+<div id="login-screen">
+  <div class="login-card">
+    <h1>Pokémon Card Collector</h1>
+    <p class="sub">Sign in with your username + password (not the full email)</p>
+    <label for="login-username">Username</label>
+    <input type="text" id="login-username" placeholder="e.g. Jake" autocomplete="username" maxlength="64">
+    <label for="login-pin">Password</label>
+    <input type="password" id="login-pin" placeholder="password (min 4 characters)" autocomplete="current-password" maxlength="32">
+    <button class="btn-login" id="btn-login" onclick="doLogin()">Sign In</button>
+    <div class="login-error" id="login-error"></div>
+  </div>
+  <p style="margin-top:1.5rem;color:#5a6480;font-size:.8rem;text-align:center">
+    Accounts are created by the Admin.<br>Ask a parent if you need a login.
+  </p>
+</div>
+
+<div class="sidebar-backdrop" id="sidebar-backdrop" onclick="closeSidebar()"></div>
+
+<div id="echo-banner" aria-live="polite">
+  <div class="echo-banner-inner">
+    <div class="echo-banner-ico">⚡</div>
+    <div class="echo-banner-copy">
+      <div class="echo-banner-title">Echo active</div>
+      <div class="echo-banner-sub" id="echo-banner-sub">All packs boosted for everyone</div>
+    </div>
+    <div class="echo-banner-timer" id="echo-banner-timer">2:30</div>
+  </div>
+</div>
+<aside class="app-sidebar" id="app-sidebar">
+  <div class="app-sidebar-brand" id="sidebar-brand" onclick="if(typeof currentUser!=='undefined'&&currentUser&&typeof navGo==='function')navGo('profile');else if(typeof navGo==='function')navGo('home');" title="Your profile">
+    <img class="brand-logo" id="sidebar-badge-logo" src="art/packs/poke-ball.webp" alt="Badge" draggable="false"/>
+    <div class="brand-text">POKÉMON<br/><span>CARD'S</span></div>
+    <div class="brand-disclaimer">Fan-made · Base Set · Not affiliated with Nintendo / Game Freak / TPC</div>
+  </div>
+  <div class="app-sidebar-stats">
+    <div id="user-badge" style="margin-bottom:.4rem"></div>
+    <div>$ <strong id="money">25.00</strong></div>
+    <div class="packs-hover-wrap" style="position:relative;display:inline-block;cursor:default">
+      📦 <strong id="packs">0</strong> packs
+      <div id="packs-breakdown" class="packs-breakdown" style="display:none"></div>
+    </div>
+    <div>🃏 <strong id="owned-count">0</strong> / <span id="total-cards">0</span></div>
+  </div>
+  <nav class="app-nav">
+    <div class="app-nav-label">Main</div>
+    <button type="button" class="app-nav-btn active" data-tab="home" onclick="navGo('home')"><span class="nav-ico">🏠</span> Home</button>
+    <button type="button" class="app-nav-btn" data-tab="open" onclick="navGo('open')"><span class="nav-ico">🎴</span> Open Packs</button>
+    <button type="button" class="app-nav-btn" data-tab="collection" onclick="navGo('collection')"><span class="nav-ico">📚</span> Collection</button>
+    <button type="button" class="app-nav-btn" data-tab="catalog" onclick="navGo('catalog')"><span class="nav-ico">📰</span> Catalog</button>
+    <button type="button" class="app-nav-btn" data-tab="binder" onclick="navGo('binder')"><span class="nav-ico">📖</span> Binders</button>
+    <button type="button" class="app-nav-btn" data-tab="market" id="nav-market-btn" onclick="navGo('market')"><span class="nav-ico">🏪</span> Market</button>
+    <div class="app-nav-label">More</div>
+    <button type="button" class="app-nav-btn" data-tab="trade" onclick="navGo('trade')"><span class="nav-ico">🤝</span> Trade</button>
+    <button type="button" class="app-nav-btn" data-tab="leaderboard" onclick="navGo('leaderboard')"><span class="nav-ico">🏆</span> Leaderboard</button>
+    <button type="button" class="app-nav-btn" data-tab="teams" onclick="navGo('teams')"><span class="nav-ico">👥</span> Teams</button>
+    <button type="button" class="app-nav-btn" data-tab="quests" onclick="navGo('quests')"><span class="nav-ico">⭐</span> Quests <span class="nav-quest-badge" id="quest-nav-badge">★</span></button>
+    <button type="button" class="app-nav-btn" data-tab="achievements" onclick="navGo('achievements')"><span class="nav-ico">🏅</span> Achievements</button>
+    <button type="button" class="app-nav-btn" data-tab="shop" id="nav-shop-btn" onclick="navGo('shop')"><span class="nav-ico">🛒</span> Shop</button>
+    <button type="button" class="app-nav-btn" data-tab="players" onclick="navGo('players')"><span class="nav-ico">👥</span> Players</button>
+    <button type="button" class="app-nav-btn" data-tab="admin" id="nav-admin" style="display:none" onclick="navGo('admin')"><span class="nav-ico">⚙️</span> Admin</button>
+  </nav>
+  <div class="app-sidebar-foot">
+    <button class="btn btn-daily" id="daily-btn-side" onclick="claimDailyPack()" style="width:100%;padding:.55rem .6rem;font-size:.82rem">🎁 Daily Free Pack</button>
+    <div class="daily-note" id="daily-note-side" style="margin-top:.35rem;font-size:.72rem;color:var(--muted);text-align:center">One free pack every day</div>
+    <button type="button" class="btn-logout" id="btn-logout-side" onclick="doLogout()" style="width:100%;margin-top:.55rem;padding:.45rem .6rem;font-size:.8rem;border-radius:8px">Log out</button>
+  </div>
+</aside>
+<div class="app-main">
+  <div class="app-topbar">
+    <button type="button" class="menu-toggle" id="menu-toggle" onclick="toggleSidebar()" aria-label="Menu">☰</button>
+    <div class="top-title" id="top-title">Home</div>
+    <div class="stats" style="margin:0">
+      <div class="stat">$<strong id="money-top">25.00</strong></div>
+      <div class="stat packs-hover-wrap" style="position:relative;cursor:default">📦 <strong id="packs-top">0</strong>
+        <div id="packs-breakdown-top" class="packs-breakdown" style="display:none"></div>
+      </div>
+      <button type="button" class="stat mail-top-btn" id="mail-top-btn" onclick="navGo('mail')" title="Mail">
+        ✉️ Mail <span class="nav-quest-badge" id="mail-nav-badge" style="display:none">0</span>
+      </button>
+      <button type="button" class="btn-logout" id="btn-logout-top" onclick="doLogout()" title="Log out" style="margin-left:.25rem">Log out</button>
+    </div>
+  </div>
+  <div class="app-content">
+  <div id="home" class="panel active">
+    <div class="home-dashboard">
+      <div class="home-layout">
+        <div class="home-main-col">
+          
+          <section class="home-hero">
+            <div class="home-hero-copy">
+              <span class="home-kicker">Collector dashboard</span>
+              <h1 id="home-welcome">Welcome back, Trainer</h1>
+              <p>Build your collection, complete your set, and find your next favorite pull.</p>
+            </div>
+          </section>
+
+          <section class="home-stat-grid home-stat-grid-4" aria-label="Player statistics">
+            <div class="home-stat-card">
+              <div class="home-stat-icon">💰</div><div><div class="home-stat-label">Balance</div><div class="home-stat-value gold" id="home-money">$0.00</div></div>
+            </div>
+            <div class="home-stat-card packs">
+              <div class="home-stat-icon">🎴</div><div><div class="home-stat-label">Packs</div><div class="home-stat-value" id="home-packs">0</div></div>
+            </div>
+            <div class="home-stat-card collection">
+              <div class="home-stat-icon">▣</div><div><div class="home-stat-label">Collection</div><div class="home-stat-value purple" id="home-collection">0 / 0</div></div>
+            </div>
+                      <div class="home-stat-card dw-stat" id="home-dw-stat" onclick="openDailyWheel()" title="Daily Luck Wheel" role="button" tabindex="0">
+              <div class="home-stat-icon">🎡</div><div><div class="home-stat-label">Luck Wheel</div><div class="home-stat-value gold" id="home-dw-stat-value">Spin</div></div>
+            </div>
+          </section>
+
+          <article class="home-card home-feature" id="home-feature-card">
+            <div class="home-feature-copy">
+              <h2 id="home-feature-title">Ready to rip?</h2>
+              <p id="home-feature-copy">Choose a pack, tear it open, and add new cards to your collection.</p>
+              <button class="btn" id="home-feature-btn" onclick="navGo('open')">📦&nbsp; Open a Pack</button>
+            </div>
+            <div class="home-pack-art" id="home-rare-showcase" aria-hidden="true"></div>
+          </article>
+
+          <div class="home-lower-grid">
+            <article class="home-card">
+              <div class="home-card-head"><h2><span>◔</span> Collection progress</h2><button class="home-link" onclick="navGo('collection')">View all</button></div>
+              <div class="home-progress">
+                <div class="home-progress-body">
+                  <div class="home-ring" id="home-progress-ring"><b id="home-progress-pct">0%</b></div>
+                  <div class="home-progress-copy">
+                    <strong id="home-progress-count">0 / 0</strong>
+                    <span>cards collected<br><span id="home-progress-remaining">Start opening packs to fill your binder.</span></span>
+                  </div>
+                </div>
+                <div class="home-progress-bar"><i id="home-progress-fill"></i></div>
+              </div>
+            </article>
+            <article class="home-card">
+              <div class="home-card-head"><h2><span>✦</span> Recent pulls</h2><button class="home-link" onclick="navGo('collection')">View collection</button></div>
+              <div class="home-pulls" id="home-recent-pulls"></div>
+            </article>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    <div id="home-mobile-rail-mount" aria-label="Home activity"></div>
+  </div>
+<div id="open" class="panel">
+  <div class="open-premium-shell">
+    <div class="open-set-rail" id="open-set-rail">
+      <button type="button" class="active" data-open-set="Base Set" onclick="selectOpenSet('Base Set')">Base Set</button>
+      <button type="button" data-open-set="Jungle" onclick="selectOpenSet('Jungle')">Jungle</button>
+      <button type="button" data-open-set="Fossil" onclick="selectOpenSet('Fossil')">Fossil</button>
+      <button type="button" data-open-set="Mystery Box" id="open-set-mystery" onclick="selectOpenSet('Mystery Box')" style="display:none">🎁 Mystery</button>
+    </div>
+    <div class="pack-area premium-pack-stage">
+      <div class="premium-set-stock"><strong id="premium-set-name">Base Set Packs</strong><span><b id="premium-pack-count">—</b> available</span></div>
+      <div class="premium-instruction">Drag down or click to open<div class="premium-chevrons">⌄</div></div>
+      <div id="pack-idle">
+        <div class="pack-visual swipeable" id="pack-visual">
+          <div class="pack-body">
+            <img id="pack-art" class="pack-art-img" src="art/packs/poke-ball.webp" alt="Booster Pack" draggable="false"/>
+          </div>
+          <div class="pack-shine" id="pack-shine"></div>
+          <div class="pack-tear-flash" id="pack-tear-flash"></div>
+          <div class="pack-tear-line" id="pack-tear-line"></div>
+          <div class="pack-swipe-hint" id="pack-swipe-hint">Drag down or click to open</div>
+        </div>
+        <div class="btn-group">
+          <button class="btn" id="open-btn" onclick="startOpenPack()">Open Pack (1)</button>
+        </div>
+      </div>
+      <div id="rip-stage" style="display:none;text-align:center">
+        <div class="pack-visual" id="rip-pack">
+          <div class="pack-body"><img id="rip-pack-art" class="pack-art-img" src="art/packs/poke-ball.webp" alt="Booster Pack"/></div>
+        </div>
+        <p class="click-hint" style="margin-top:1rem">Ripping open the pack...</p>
+      </div>
+      <div class="reveal-stage" id="reveal-stage">
+        <div class="card-counter" id="card-counter">Card 1 of 5</div>
+        <div class="reveal-card-wrapper" onclick="onCardClick()">
+          <div class="reveal-card" id="reveal-card">
+            <div class="reveal-face reveal-back"><img src="art/card-back.webp" alt="Back" class="card-back-img"/></div>
+            <div class="reveal-face reveal-front" id="reveal-front"></div>
+          </div>
+        </div>
+        <div class="click-hint" id="click-hint">Click the card to flip</div>
+        <div class="reveal-actions" id="reveal-actions" style="display:none">
+          <button class="btn" id="next-btn" onclick="nextCard()">Next Card →</button>
+          <button class="btn btn-secondary" id="finish-btn" onclick="finishOpening()" style="display:none">Done</button>
+        </div>
+      </div>
+    </div>
+    <section class="premium-preview" aria-label="Eleven card reveal board">
+      <div class="premium-reveal-controls"><button type="button" class="premium-reveal-all" id="reveal-all-btn" onclick="revealAllCards()">Flip all 11 cards</button></div>
+      <div class="opened-summary" id="opened-summary"></div>
+    </section>
+    <div id="open-set-status" style="display:none">Base Set packs ready: —</div>
+  </div>
+  </div>
+
+      
+  <div id="catalog" class="panel page-shell">
+    <div class="ach-title-panel page-hero">
+      <div class="ach-title-row">
+        <div class="ach-title-main">
+          <div class="ach-eyebrow">Price Guide</div>
+          <h1>Catalog</h1>
+          <p>Confirm prices from the kid guide or PDF to unlock them in your notes forever.</p>
+        </div>
+        <div class="ach-summary">
+          <div class="ach-summary-card"><div class="ach-medal">📋</div><b id="cat-sum-total">0</b><span>Cards</span></div>
+          <div class="ach-summary-card"><div class="ach-medal">✓</div><b id="cat-sum-unlocked">0</b><span>Unlocked</span></div>
+          <div class="ach-summary-card"><div class="ach-medal">🔒</div><b id="cat-sum-locked">0</b><span>Locked</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="mkt-topbar">
+      <div class="mkt-tabs" style="flex-wrap:wrap;gap:.45rem">
+        <button type="button" class="btn" onclick="openKidPriceGuide()">📋 Kid price guide</button>
+        <a class="btn btn-secondary" href="price-guide.pdf" target="_blank" rel="noopener">📰 PDF catalog</a>
+      </div>
+    </div>
+    <section class="mkt-body page-body">
+      <div class="filters" id="catalog-set-filters" style="margin-bottom:.75rem;flex-wrap:wrap;flex-shrink:0"></div>
+      <div class="catalog-wrap page-scroll" id="catalog-content"></div>
+    </section>
+  </div>
+
+      <div id="collection" class="panel col-panel">
+    <div class="ach-title-panel col-title-panel">
+      <div class="ach-title-row">
+        <div class="ach-title-main">
+          <div class="ach-eyebrow">Trainer Vault</div>
+          <h1>Collection</h1>
+          <p>Every card you own — filter by set and rarity, tap a card to inspect.</p>
+        </div>
+        <div class="ach-overall">
+          <strong id="col-overall-count">0 <span>/ 0</span></strong>
+          <div class="ach-eyebrow" style="display:inline;margin-left:10px">Set progress</div>
+          <div class="ach-meter"><i id="progress-fill" style="width:0%"></i></div>
+          <small id="progress-text" style="color:var(--gold)">0% complete</small>
+        </div>
+        <div class="ach-summary">
+          <div class="ach-summary-card"><div class="ach-medal">🃏</div><b id="col-sum-unique">0</b><span>Unique</span></div>
+          <div class="ach-summary-card"><div class="ach-medal">×</div><b id="col-sum-copies">0</b><span>Copies</span></div>
+          <div class="ach-summary-card"><div class="ach-medal">✨</div><b id="col-sum-holos">0</b><span>Holos</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mkt-topbar">
+      <div class="mkt-tabs" id="col-set-tabs">
+        <button type="button" class="mkt-tab active set-filter" data-set="all">All Sets</button>
+        <button type="button" class="mkt-tab set-filter" data-set="Base Set">Base Set</button>
+        <button type="button" class="mkt-tab set-filter" data-set="Jungle">Jungle</button>
+        <button type="button" class="mkt-tab set-filter" data-set="Fossil">Fossil</button>
+        <button type="button" class="mkt-tab set-filter" data-set="Wizards Black Star Promos">Promos</button>
+      </div>
+    </div>
+
+    <section class="mkt-body col-body">
+      <div class="ach-list-head">
+        <b id="col-list-title">YOUR CARDS</b>
+        <span id="col-list-count" style="color:var(--muted);font-size:.8rem;font-weight:600"></span>
+      </div>
+      <div class="mkt-filters" id="col-filters">
+        <input type="text" id="col-search" placeholder="Search name or number…" oninput="renderCollection()" class="mkt-filter-input">
+        <button type="button" class="filter-btn active" data-filter="all">All rarities</button>
+        <button type="button" class="filter-btn" data-filter="common">Common</button>
+        <button type="button" class="filter-btn" data-filter="uncommon">Uncommon</button>
+        <button type="button" class="filter-btn" data-filter="epic">Rare</button>
+        <button type="button" class="filter-btn" data-filter="legendary">Rare Holo</button>
+        <label class="col-missing-toggle" title="Show cards you still need">
+          <input type="checkbox" id="col-show-missing" onchange="showMissing=this.checked;renderCollection()"> Show missing
+        </label>
+      </div>
+      <div class="col-grid-scroll">
+        <div class="collection-grid" id="collection-grid"></div>
+      </div>
+    </section>
+  </div>
+
+  <div id="binder" class="panel page-shell">
+    <div class="ach-title-panel page-hero">
+      <div class="ach-title-row">
+        <div class="ach-title-main">
+          <div class="ach-eyebrow">Page Protectors</div>
+          <h1>Binders</h1>
+          <p>Open a set binder, arrange pages, and show off your best pulls.</p>
+        </div>
+        <div class="ach-summary">
+          <div class="ach-summary-card"><div class="ach-medal">📖</div><b id="bnd-sum-sets">4</b><span>Sets</span></div>
+          <div class="ach-summary-card"><div class="ach-medal">📄</div><b id="bnd-sum-pages">—</b><span>Pages</span></div>
+          <div class="ach-summary-card"><div class="ach-medal">🃏</div><b id="bnd-sum-placed">—</b><span>Placed</span></div>
+        </div>
+      </div>
+    </div>
+    <!-- Set cover shelf -->
+    <div id="binder-shelf" class="page-body mkt-body">
+      <div class="ach-list-head"><b>YOUR BINDERS</b><span style="color:var(--muted);font-size:.8rem">Click a set to open</span></div>
+      <div class="binder-covers page-scroll" id="binder-covers"></div>
+    </div>
+    <!-- Opened set pages -->
+    <div id="binder-open" style="display:none" class="page-body mkt-body">
+      <div class="binder-toolbar" style="flex-shrink:0">
+        <div>
+          <button class="btn btn-secondary" style="padding:.35rem .7rem;font-size:.8rem;margin-bottom:.35rem" onclick="closeBinderSet()">← All binders</button>
+          <h2 style="margin-bottom:.2rem;color:var(--gold)" id="binder-set-title">Base Set</h2>
+          <small style="color:var(--muted)" id="binder-hint">9 cards per page · click empty slot to place a card</small>
+          <div class="binder-style-picker">
+            <label for="binder-style-select" style="font-size:.72rem;color:var(--muted)">🎨 Binder style</label>
+            <select id="binder-style-select" onchange="setCurrentBinderStyle(this.value)"></select>
+            <span class="binder-style-owned">Uses cosmetics you own</span>
+          </div>
+        </div>
+        <div class="binder-nav">
+          <button class="btn btn-secondary" id="binder-edit-btn" onclick="toggleBinderEdit()" style="padding:.35rem .7rem;font-size:.8rem">✏️ Arrange</button>
+          <button class="btn btn-secondary" onclick="resetBinderLayout()" style="padding:.35rem .7rem;font-size:.8rem" title="Reset to set order">Reset</button>
+          <button class="btn btn-secondary" onclick="binderPrev()">← Prev</button>
+          <span class="binder-page-label" id="binder-page-label">Page 1 / 12</span>
+          <button class="btn btn-secondary" onclick="binderNext()">Next →</button>
+        </div>
+      </div>
+      <div class="page-scroll">
+        <div class="binder-page" id="binder-page"></div>
+        <div class="binder-progress" id="binder-progress">0 / 102 collected</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Binder place-card picker modal -->
+  <div id="binder-pick-modal" style="display:none;position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.7);align-items:center;justify-content:center;padding:1rem" onclick="closeBinderPick()">
+    <div style="background:var(--card-bg);border:1px solid #2a314d;border-radius:14px;padding:1.2rem;max-width:480px;width:100%;max-height:85vh;overflow:auto" onclick="event.stopPropagation()">
+      <h3 style="color:var(--gold);margin-bottom:.5rem">Place a card</h3>
+      <p style="color:var(--muted);font-size:.85rem;margin-bottom:.6rem">Search by name or filter by set, then pick an owned card</p>
+      <input type="text" id="binder-pick-search" placeholder="Search name…" autocomplete="off"
+        style="width:100%;padding:.5rem .7rem;border-radius:8px;border:1px solid #2a314d;background:#0f1320;color:var(--text);margin-bottom:.55rem;font-size:.9rem"
+        oninput="renderBinderPickList()">
+      <div class="filters" id="binder-pick-set-filters" style="margin-bottom:.7rem;flex-wrap:wrap"></div>
+      <div id="binder-pick-list" style="display:flex;flex-wrap:wrap;gap:.45rem;max-height:48vh;overflow:auto"></div>
+      <button class="btn btn-secondary" style="margin-top:.9rem" onclick="closeBinderPick()">Cancel</button>
+    </div>
+  </div>
+
+  
+  <div id="trade" class="panel page-shell">
+    <div class="ach-title-panel page-hero">
+      <div class="ach-title-row">
+        <div class="ach-title-main">
+          <div class="ach-eyebrow">Live Table</div>
+          <h1>Trade</h1>
+          <p>Create or join a room — both players must accept on the felt table.</p>
+        </div>
+        <div class="ach-summary">
+          <div class="ach-summary-card"><div class="ach-medal">🔴</div><b>Live</b><span>Room</span></div>
+          <div class="ach-summary-card"><div class="ach-medal">🤝</div><b>2</b><span>Players</span></div>
+          <div class="ach-summary-card"><div class="ach-medal">✓</div><b>Both</b><span>Accept</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="tr-shell page-body mkt-body">
+      <div class="tr-top" style="flex-shrink:0">
+        <div>
+          <h2 style="margin:0;color:var(--gold);font-size:1rem">Trading Room</h2>
+          <p class="tr-sub">Both online · Both accept · Felt-table trades</p>
+        </div>
+        <div id="live-trade-room-badge" style="display:none;align-items:center;gap:10px">
+          <span style="color:var(--muted);font-size:.8rem">ROOM</span>
+          <span class="tr-code" id="live-room-code"></span>
+          <span id="live-room-status" style="font-size:.8rem;color:var(--muted)"></span>
+          <button class="btn btn-secondary" style="padding:.35rem .7rem;font-size:.8rem" onclick="liveLeaveRoom()">Leave</button>
+        </div>
+      </div>
+
+      <div id="live-trade-lobby" class="tr-lobby">
+        <p style="margin:0 0 .4rem;color:var(--muted);font-size:.9rem">Create a room and share the code, or join a friend’s table.</p>
+        <div class="lobby-row">
+          <button class="btn" onclick="liveCreateRoom()">Create Room</button>
+          <input type="text" id="live-join-code" placeholder="Room code" maxlength="6"
+            style="width:110px;padding:.55rem .65rem;border-radius:8px;border:1px solid #2a314d;background:#0f1320;color:var(--text);text-transform:uppercase;text-align:center;letter-spacing:.12em;font-weight:800">
+          <button class="btn btn-secondary" onclick="liveJoinRoom()">Join</button>
+        </div>
+        <div id="live-lobby-msg" style="font-size:.88rem;color:var(--muted);min-height:1.2em"></div>
+      </div>
+
+      <div id="live-trade-room" style="display:none">
+        <div class="tr-room">
+          <!-- YOU (left) -->
+          <section class="tr-side" id="tr-side-you">
+            <div class="tr-side-head">
+              <div>
+                <strong id="tr-you-name">You</strong>
+                <div class="tr-online">● ONLINE</div>
+              </div>
+              <span style="font-size:.72rem;color:var(--muted)">YOU</span>
+            </div>
+            <div class="tr-avatar"><div class="tr-sil"><div class="s-head"></div><div class="s-body"></div><div class="s-arm l"></div><div class="s-arm r"></div><div class="s-leg l"></div><div class="s-leg r"></div></div></div>
+            <div class="tr-stats">On table: <strong id="tr-my-count">0</strong><br>Ready: <strong id="live-you-accepted" style="display:none;color:#22c55e">Yes ✓</strong><span id="tr-you-ready-no">No</span></div>
+            <div class="tr-pick-panel">
+              <div class="tr-hand-title">Choose a Card</div>
+              <input class="tr-search" id="tr-search" placeholder="Search owned…" oninput="trPickerFilter()">
+              <div class="tr-filter-row">
+                <select class="tr-filter-select" id="tr-set-filter" onchange="trPickerFilter()" aria-label="Filter trade cards by set">
+                  <option value="all">All Sets</option>
+                </select>
+                <select class="tr-filter-select" id="tr-rarity-filter" onchange="trPickerFilter()" aria-label="Filter trade cards by rarity">
+                  <option value="all">All Rarities</option>
+                </select>
+              </div>
+              <div class="tr-single">
+                <div class="tr-single-art empty" id="tr-single-art">No cards</div>
+                <div class="tr-single-name" id="tr-single-name"></div>
+                <div class="tr-single-nav">
+                  <button type="button" onclick="trPickerStep(-1)">‹</button>
+                  <span class="tr-idx" id="tr-single-idx">0 / 0</span>
+                  <button type="button" onclick="trPickerStep(1)">›</button>
+                </div>
+                <button class="btn btn-secondary" style="width:100%;padding:.45rem;font-size:.8rem" onclick="trPlaceSelected()">Place on Table</button>
+              </div>
+            </div>
+            <!-- hidden select kept for liveAddCard fallback -->
+            <select id="live-my-select" style="display:none"></select>
+          </section>
+
+          <!-- TABLE (center) -->
+          <section class="tr-center">
+            <div class="tr-table-wrap">
+              <div class="tr-table">
+                <div class="tr-table-label">Live Trade</div>
+                <div class="tr-side-label top">THEIR SIDE</div>
+                <div class="tr-side-label bottom">YOUR SIDE</div>
+                <div class="tr-center-line"></div>
+                <div class="tr-zone top empty" id="live-their-offer"></div>
+                <div class="tr-zone bottom empty" id="live-my-offer"></div>
+              </div>
+            </div>
+            <div class="tr-controls">
+              <button class="btn" id="live-accept-btn" onclick="liveAccept()">Accept Trade</button>
+              <button class="btn btn-secondary" onclick="liveCancelAccept()" id="live-cancel-accept-btn" style="display:none">Cancel Accept</button>
+              <div id="live-trade-msg" style="margin-left:auto;font-size:.82rem;color:var(--muted);min-height:1.2em"></div>
+            </div>
+          </section>
+
+          <!-- THEM (right) — mirrors left -->
+          <section class="tr-side" id="tr-side-them">
+            <div class="tr-side-head">
+              <div>
+                <strong id="tr-them-name">Waiting…</strong>
+                <div id="tr-them-online" style="font-size:.7rem;font-weight:800;color:var(--muted)">○ OFFLINE</div>
+              </div>
+              <span style="font-size:.72rem;color:var(--muted)">THEM</span>
+            </div>
+            <div class="tr-avatar"><div class="tr-sil" style="opacity:.45"><div class="s-head"></div><div class="s-body"></div><div class="s-arm l"></div><div class="s-arm r"></div><div class="s-leg l"></div><div class="s-leg r"></div></div></div>
+            <div class="tr-stats">On table: <strong id="tr-them-count">0</strong><br>Ready: <strong id="tr-them-ready" style="color:var(--muted)">—</strong></div>
+            <div class="tr-waiting" id="tr-them-waiting">
+              <strong>Waiting for friend</strong>
+              <span>Share the room code so they can join this table.</span>
+            </div>
+            <div class="tr-pick-panel" id="tr-them-joined-panel" style="display:none">
+              <div class="tr-hand-title">Their offers</div>
+              <p style="margin:0;font-size:.75rem;color:var(--muted);line-height:1.35">Cards they place appear on the table above. Both must Accept to complete the trade.</p>
+            </div>
+          </section>
+        </div>
+        <div style="display:none"><span id="live-them-accepted"></span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- classic code elements kept hidden so old JS doesn't break -->
+  <div style="display:none" aria-hidden="true">
+    <div id="give-picks"></div><select id="give-select"></select>
+    <div id="want-picks"></div><select id="want-select"></select>
+    <textarea id="offer-code"></textarea>
+    <textarea id="accept-input"></textarea>
+    <div id="accept-give"></div><div id="accept-recv"></div>
+    <p id="accept-status"></p><button id="accept-btn"></button>
+    <textarea id="completion-code"></textarea>
+    <textarea id="complete-input"></textarea>
+    <div id="offer-result"></div><div id="accept-preview"></div><div id="completion-result"></div>
+  </div>
+
+
+    <div id="market" class="panel mkt-panel">
+      <div class="ach-title-panel mkt-title-panel">
+        <div class="ach-title-row">
+          <div class="ach-title-main">
+            <div class="ach-eyebrow">Trading Floor</div>
+            <h1>Market</h1>
+            <p>Buy and sell with other trainers, or take NPC trainer deals.</p>
+          </div>
+          <div class="ach-overall">
+            <strong id="mkt-overall-count">0 <span>open</span></strong>
+            <div class="ach-eyebrow" style="display:inline;margin-left:10px">Player listings</div>
+            <div class="ach-meter"><i id="mkt-overall-meter" style="width:0%"></i></div>
+            <small id="mkt-overall-pct" style="color:var(--gold)">Browse &amp; filter</small>
+          </div>
+          <div class="ach-summary">
+            <div class="ach-summary-card"><div class="ach-medal">👥</div><b id="mkt-sum-player">0</b><span>Listings</span></div>
+            <div class="ach-summary-card"><div class="ach-medal">🏪</div><b id="mkt-sum-trainer">0</b><span>NPC deals</span></div>
+            <div class="ach-summary-card"><div class="ach-medal">★</div><b id="mkt-sum-mine">0</b><span>Yours</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mkt-topbar">
+        <div class="mkt-tabs" id="mkt-categories">
+          <button type="button" class="mkt-tab active" data-mkt="player" onclick="marketShowSection('player')">
+            <span>👥</span> Player Market
+          </button>
+          <button type="button" class="mkt-tab" data-mkt="auctions" onclick="marketShowSection('auctions')">
+            <span>🔨</span> Auctions
+          </button>
+          <button type="button" class="mkt-tab" data-mkt="bids" onclick="marketShowSection('bids')">
+            <span>📋</span> Bids
+          </button>
+          <button type="button" class="mkt-tab" data-mkt="trainer" onclick="marketShowSection('trainer')">
+            <span>🏪</span> Trainer Offers
+          </button>
+        </div>
+      </div>
+
+      <section class="mkt-body ach-list-panel">
+        <div id="market-sec-player" class="mkt-sec">
+          <div class="ach-list-head">
+            <b>PLAYER LISTINGS</b>
+            <button type="button" class="btn btn-secondary" style="padding:.25rem .55rem;font-size:.75rem" onclick="loadPlayerMarket()">Refresh</button>
+          </div>
+          <div class="mkt-filters">
+            <input type="text" id="pm-search" placeholder="Search card name…" oninput="applyPlayerMarketFilters()" class="mkt-filter-input">
+            <select id="pm-seller" onchange="applyPlayerMarketFilters()" class="mkt-filter-select">
+              <option value="all">All usernames</option>
+            </select>
+            <select id="pm-set" onchange="applyPlayerMarketFilters()" class="mkt-filter-select">
+              <option value="all">All sets</option>
+            </select>
+            <select id="pm-grade" onchange="applyPlayerMarketFilters()" class="mkt-filter-select">
+              <option value="all">Any grade</option>
+              <option value="raw">Raw only</option>
+              <option value="graded">Graded only</option>
+              <option value="10">PSA 10</option>
+              <option value="9">PSA 9</option>
+              <option value="8">PSA 8</option>
+              <option value="7">PSA 7</option>
+            </select>
+            <select id="pm-who" onchange="applyPlayerMarketFilters()" class="mkt-filter-select">
+              <option value="all">Everyone</option>
+              <option value="others">Others only</option>
+              <option value="mine">My listings</option>
+            </select>
+            <select id="pm-sort" onchange="applyPlayerMarketFilters()" class="mkt-filter-select">
+              <option value="newest">Newest</option>
+              <option value="price-low">Price ↑</option>
+              <option value="price-high">Price ↓</option>
+              <option value="name">Name A–Z</option>
+            </select>
+          </div>
+          <div id="player-market-list" class="mkt-listing-list">Loading…</div>
+        </div>
+
+        <div id="market-sec-auctions" class="mkt-sec" style="display:none">
+          <div class="ach-list-head">
+            <b>AUCTION HOUSE</b>
+            <button type="button" class="btn btn-secondary" style="padding:.25rem .55rem;font-size:.75rem" onclick="loadAuctions()">Refresh</button>
+          </div>
+          <p style="color:var(--muted);font-size:.82rem;margin:0 0 .65rem;padding:0 .15rem">
+            Bid or buyout. Live updates while this tab is open. After the first bid, the seller cannot cancel.
+          </p>
+          <div id="auction-house-list" class="mkt-listing-list">Loading…</div>
+        </div>
+
+        <div id="market-sec-bids" class="mkt-sec" style="display:none">
+          <div class="ach-list-head">
+            <b>YOUR BIDS</b>
+            <button type="button" class="btn btn-secondary" style="padding:.25rem .55rem;font-size:.75rem" onclick="loadMyAuctionBids()">Refresh</button>
+          </div>
+          <p style="color:var(--muted);font-size:.82rem;margin:0 0 .65rem;padding:0 .15rem">
+            Auctions you have bid on — watch time left and whether you are winning.
+          </p>
+          <div id="auction-bids-list" class="mkt-listing-list">Loading…</div>
+        </div>
+
+        <div id="market-sec-trainer" class="mkt-sec" style="display:none">
+          <div class="ach-list-head">
+            <b>TRAINER OFFERS</b>
+            <div style="display:flex;align-items:center;gap:.45rem;flex-wrap:wrap">
+              <div class="market-timer" id="market-timer" style="margin:0">Next refresh: —</div>
+              <button type="button" class="btn btn-secondary" style="padding:.25rem .55rem;font-size:.75rem" onclick="openTradeHistoryModal()">Trade history</button>
+            </div>
+          </div>
+          <div class="market-toolbar" style="margin-bottom:.55rem">
+            <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+              <label style="font-size:.8rem;color:var(--muted)">Sort</label>
+              <select id="market-sort" onchange="setMarketSort(this.value)">
+                <option value="want">Want list first</option>
+                <option value="value">Best value</option>
+                <option value="price-high">Highest price</option>
+                <option value="price-low">Lowest price</option>
+              </select>
+            </div>
+            <button class="btn btn-secondary" id="market-refresh-btn" onclick="refreshMarket(true)" disabled>🔄 Refresh (timed)</button>
+          </div>
+          <div class="market-grid mkt-trainer-scroll" id="market-grid"></div>
+        </div>
+      </section>
+    </div>
+
+    <div id="trade-history-modal" style="display:none;position:fixed;inset:0;z-index:420;background:rgba(0,0,0,.78);align-items:center;justify-content:center;padding:1rem" onclick="if(event.target===this)closeTradeHistoryModal()">
+      <div style="background:#12141c;border:1px solid #2a314d;border-radius:14px;padding:1rem 1.15rem;max-width:440px;width:100%;max-height:min(70vh,520px);display:flex;flex-direction:column;gap:.55rem" onclick="event.stopPropagation()">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:.5rem">
+          <h3 style="margin:0;color:var(--gold)">Trade history</h3>
+          <button type="button" class="btn btn-secondary" style="padding:.25rem .55rem;font-size:.75rem" onclick="closeTradeHistoryModal()">Close</button>
+        </div>
+        <ul id="market-history-list" class="market-history" style="margin:0;padding:0;list-style:none;overflow:auto;flex:1;min-height:0"><li>No trades yet</li></ul>
+      </div>
+    </div>
+
+      <div id="mail" class="panel">
+    <h2 style="margin-bottom:.35rem">✉️ Mail</h2>
+    <p style="color:var(--muted);font-size:.88rem;margin-bottom:1rem">Send messages and gift-wrapped cards. Great for event prizes.</p>
+    <div class="lb-tabs" style="margin-bottom:1rem">
+      <button type="button" class="lb-tab active" id="mail-tab-inbox" onclick="mailShowTab('inbox')">Inbox</button>
+      <button type="button" class="lb-tab" id="mail-tab-sent" onclick="mailShowTab('sent')">Sent</button>
+      <button type="button" class="lb-tab" id="mail-tab-compose" onclick="mailShowTab('compose')">Compose</button>
+    </div>
+    <div id="mail-view">Loading…</div>
+  </div>
+
+<!-- Live Event room is a modal overlay (admin hosts from Admin panel; players join via invite popup) -->
+<div id="lw-invite-modal" style="display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.8);align-items:center;justify-content:center;padding:1rem">
+  <div style="background:linear-gradient(160deg,#12182c,#0e1424);border:1px solid rgba(0,220,255,.35);border-radius:16px;padding:1.4rem 1.5rem;max-width:380px;width:100%;box-shadow:0 0 40px rgba(0,180,255,.2)" onclick="event.stopPropagation()">
+    <div style="font-size:.72rem;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#7df;margin-bottom:.5rem">⚡ Pokémon Center Event</div>
+    <h3 style="margin:0 0 .35rem;color:#fff;font-size:1.25rem" id="lw-invite-title">You're invited!</h3>
+    <p style="color:#8b9bb8;font-size:.9rem;margin:0 0 1rem" id="lw-invite-body">Join the live prize wheel event.</p>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+      <button class="btn" onclick="lwAcceptInvite()">Join Event</button>
+      <button class="btn btn-secondary" onclick="lwDismissInvite()">Not now</button>
+    </div>
+  </div>
+</div>
+
+<div id="lw-event-overlay" style="display:none;position:fixed;inset:0;z-index:480;background:rgba(5,8,18,.96);overflow-y:auto">
+  <div class="lw-wrap" style="padding-top:1rem;padding-bottom:3rem">
+    <div class="lw-hero">
+      <div class="lw-badge live" id="lw-hero-badge">🔴 LIVE EVENT</div>
+      <h2 id="lw-overlay-title">Live Prize Wheel</h2>
+      <p>Everyone sees the same spin. The chosen trainer keeps the prize.</p>
+    </div>
+
+    <div class="lw-room-header">
+      <div>
+        <div style="font-size:.85rem;color:var(--muted)" id="lw-room-title">Live Prize Wheel</div>
+        <div style="margin-top:.35rem;display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+          <span class="lw-status-pill" id="lw-status-pill">Lobby</span>
+          <span id="lw-wheel-round-pill" style="font-size:.78rem;font-weight:700;color:#ffcb05;display:none"></span>
+        </div>
+      </div>
+      <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+        <button class="btn btn-secondary" style="padding:.35rem .7rem;font-size:.8rem" onclick="lwLeaveEvent()">Leave / End</button>
+      </div>
+    </div>
+
+    <div class="lw-card" style="padding:.75rem 1rem">
+      <div style="font-size:.78rem;color:var(--muted);margin-bottom:.4rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px">In the event</div>
+      <div class="lw-presence" id="lw-presence"></div>
+    </div>
+
+    <div class="lw-pick-board" id="lw-pick-board" style="display:none">
+      <h3>📦 Pick your pack</h3>
+      <p style="color:var(--muted);font-size:.85rem;margin:0">Each trainer claims one pack. Everyone can see the picks — no duplicates. Leftovers go to the host.</p>
+      <div class="lw-pick-grid" id="lw-pick-grid"></div>
+      <div id="lw-pick-status" style="margin-top:.65rem;font-size:.82rem;color:#7df"></div>
+    </div>
+
+    <div class="lw-stage">
+      <div class="lw-case" id="lw-case">
+        <div class="lw-case-marker"></div>
+        <div class="lw-case-track" id="lw-case-track"></div>
+      </div>
+      <!-- legacy id kept for any old refs -->
+      <div id="lw-wheel" style="display:none"></div>
+      <button class="lw-spin-btn" id="lw-spin-btn" disabled onclick="lwRequestSpin()">SPIN</button>
+      <div class="lw-result" id="lw-result"></div>
+    </div>
+
+    <div class="lw-card" id="lw-host-controls" style="display:none">
+      <h3>🎛️ Host Controls</h3>
+      <div class="lw-admin-row">
+        <label style="font-size:.85rem;color:var(--muted)">Choose spinner
+          <select id="lw-spinner-select" style="margin-left:.4rem;min-width:140px"></select>
+        </label>
+        <button class="btn" onclick="lwSetSpinner()">Set Spinner</button>
+        <button class="btn btn-secondary" onclick="lwQueueAddSpinner()">+ Add to queue</button>
+        <button class="btn btn-secondary" onclick="lwLockPackPicks()">Lock picks &amp; start</button>
+        <button class="btn btn-secondary" onclick="lwActivateEvent()">Open for Spins</button>
+        <button class="btn btn-secondary" onclick="lwShowResultsBoard()">Results board</button>
+        <button class="btn btn-secondary" onclick="lwEndEvent()">End Event</button>
+      </div>
+      <div id="lw-spinner-queue" style="margin-top:.55rem;font-size:.82rem;color:var(--muted)"></div>
+      <div class="lw-msg" id="lw-host-msg"></div>
+    </div>
+  </div>
+</div>
+
+<div id="lw-results-overlay" class="lw-results-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+  <div class="lw-results-panel" onclick="event.stopPropagation()">
+    <h2>🏆 Event results</h2>
+    <p style="color:var(--muted);font-size:.88rem;margin:0 0 .75rem">Who received what — cards shown for every winner.</p>
+    <div id="lw-results-body"></div>
+    <div style="margin-top:1rem;display:flex;gap:.5rem;flex-wrap:wrap">
+      <button type="button" class="btn" onclick="document.getElementById('lw-results-overlay').classList.remove('show')">Close</button>
+    </div>
+  </div>
+</div>
+
+<div id="teams" class="panel page-shell">
+    <div class="ach-title-panel page-hero">
+      <div class="ach-title-row">
+        <div class="ach-title-main">
+          <div class="ach-eyebrow">Squad Up</div>
+          <h1>Teams</h1>
+          <p>Create or join a team (max 6). One team per trainer.</p>
+        </div>
+        <div class="ach-summary">
+          <div class="ach-summary-card"><div class="ach-medal">👥</div><b>6</b><span>Max size</span></div>
+          <div class="ach-summary-card"><div class="ach-medal">1</div><b>One</b><span>Per player</span></div>
+          <div class="ach-summary-card"><div class="ach-medal">★</div><b>Team</b><span>Glory</span></div>
+        </div>
+      </div>
+    </div>
+    <section class="mkt-body page-body">
+      <div class="ach-list-head"><b>YOUR TEAM</b></div>
+      <div id="teams-view" class="page-scroll">Loading…</div>
+    </section>
+  </div>
+
+<div id="leaderboard" class="panel page-shell">
+    <div class="ach-title-panel page-hero">
+      <div class="ach-title-row">
+        <div class="ach-title-main">
+          <div class="ach-eyebrow">Hall of Fame</div>
+          <h1>Leaderboard</h1>
+          <p>See how you stack up — rankings refresh when you open this page.</p>
+        </div>
+        <div class="ach-summary">
+          <div class="ach-summary-card"><div class="ach-medal">💰</div><b id="lb-sum-mode">$</b><span>Richest</span></div>
+          <div class="ach-summary-card"><div class="ach-medal">📚</div><b>—</b><span>Collectors</span></div>
+          <div class="ach-summary-card"><div class="ach-medal">⭐</div><b>—</b><span>Graded</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="mkt-topbar">
+      <div class="mkt-tabs" id="lb-tabs">
+        <button type="button" class="mkt-tab active lb-tab" data-lb="money" onclick="setLeaderboardMode('money')">💰 Richest</button>
+        <button type="button" class="mkt-tab lb-tab" data-lb="collectors" onclick="setLeaderboardMode('collectors')">📚 Collectors</button>
+        <button type="button" class="mkt-tab lb-tab" data-lb="graded" onclick="setLeaderboardMode('graded')">⭐ Graded</button>
+        <button type="button" class="mkt-tab lb-tab" data-lb="teams" onclick="setLeaderboardMode('teams')">👥 Teams</button>
+      </div>
+    </div>
+    <section class="mkt-body page-body">
+      <div id="lb-my-rank" class="lb-my-rank" style="display:none;flex-shrink:0"></div>
+      <div id="lb-list" class="lb-list page-scroll">Loading…</div>
+    </section>
+  </div>
+
+<div id="quests" class="panel page-shell">
+    <div class="ach-title-panel page-hero">
+      <div class="ach-title-row">
+        <div class="ach-title-main">
+          <div class="ach-eyebrow">Daily &amp; Campaign</div>
+          <h1>Quests</h1>
+          <p>Daily goals refresh every day. Set quests unlock step-by-step for packs and money.</p>
+        </div>
+        <div class="ach-summary">
+          <div class="ach-summary-card"><div class="ach-medal">☀</div><b id="q-sum-daily">—</b><span>Daily</span></div>
+          <div class="ach-summary-card"><div class="ach-medal">📜</div><b id="q-sum-set">—</b><span>Set quests</span></div>
+          <div class="ach-summary-card"><div class="ach-medal">🏅</div><b id="q-sum-ach">—</b><span>Achievements</span></div>
+        </div>
+      </div>
+    </div>
+    <section class="mkt-body page-body">
+      <div class="page-scroll">
+        <h3 class="quest-section-title">Daily Goals</h3>
+        <div class="quest-list" id="daily-quest-list"></div>
+        <h3 class="quest-section-title">Set Quests</h3>
+        <div id="set-quest-accordions"></div>
+        <h3 class="quest-section-title">Achievements</h3>
+        <div class="quest-list" id="achievement-list"></div>
+      </div>
+    </section>
+  </div>
+
+  <div id="achievements" class="panel">
+    <div class="ach-title-panel">
+      <div class="ach-title-row">
+        <div class="ach-title-main">
+          <div class="ach-eyebrow">Collector Legacy</div>
+          <h1>Achievements</h1>
+          <p>Complete challenges, collect rewards, and leave your mark on the league.</p>
+        </div>
+        <div class="ach-overall">
+          <strong id="ach-overall-count">0 <span>/ 0</span></strong>
+          <div class="ach-eyebrow" style="display:inline;margin-left:10px">Overall Progress</div>
+          <div class="ach-meter"><i id="ach-overall-meter" style="width:0%"></i></div>
+          <small id="ach-overall-pct" style="color:var(--gold)">0% completed</small>
+        </div>
+        <div class="ach-summary">
+          <div class="ach-summary-card"><div class="ach-medal">🏆</div><b id="ach-sum-pts">0</b><span>Points</span></div>
+          <div class="ach-summary-card"><div class="ach-medal">✓</div><b id="ach-sum-done">0</b><span>Completed</span></div>
+          <div class="ach-summary-card"><div class="ach-medal">✦</div><b id="ach-sum-prog">0</b><span>In progress</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="ach-layout">
+      <aside class="ach-categories" id="ach-categories"></aside>
+      <section class="ach-list-panel">
+        <div class="ach-list-head">
+          <b>YOUR ACHIEVEMENTS</b>
+          <select id="ach-set-filter" onchange="achSetFilterChange(this.value)" style="margin-left:.6rem;padding:.3rem .5rem;border-radius:8px;border:1px solid #2a314d;background:#0f1320;color:var(--text);font-size:.8rem">
+            <option value="">All sets</option>
+          </select>
+          <span id="ach-list-empty" style="color:var(--muted);font-size:.82rem;font-weight:600"></span>
+        </div>
+        <div class="ach-list" id="ach-list"></div>
+      </section>
+      <aside class="ach-detail" id="ach-detail">
+        <div class="ach-detail-empty">Select an achievement</div>
+      </aside>
+    </div>
+
+    <section class="ach-recent">
+      <div class="ach-recent-head"><span>Recent unlocks</span></div>
+      <div class="ach-recent-row" id="ach-recent"></div>
+    </section>
+  </div>
+
+  <div id="shop" class="panel page-shell">
+    <div class="ach-title-panel page-hero">
+      <div class="ach-title-row">
+        <div class="ach-title-main">
+          <div class="ach-eyebrow">Trainer Store</div>
+          <h1>Shop</h1>
+          <p>Buy packs to open, or cosmetics to flex — pure style, no power creep.</p>
+        </div>
+        <div class="ach-summary">
+          <div class="ach-summary-card"><div class="ach-medal">🎴</div><b id="shop-sum-packs">—</b><span>Your packs</span></div>
+          <div class="ach-summary-card"><div class="ach-medal">$</div><b id="shop-sum-money">—</b><span>Balance</span></div>
+          <div class="ach-summary-card"><div class="ach-medal">✨</div><b id="shop-sum-cosmo">—</b><span>Cosmetics</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="mkt-topbar">
+      <div class="mkt-tabs" id="shop-menu">
+        <button type="button" class="mkt-tab active" data-shop-sec="packs" onclick="shopShowSection('packs')">
+          <span>🎴</span> Packs
+        </button>
+        <button type="button" class="mkt-tab" data-shop-sec="cosmetics" onclick="shopShowSection('cosmetics')">
+          <span>✨</span> Cosmetics
+        </button>
+      </div>
+    </div>
+
+    <div class="admin-section active page-body mkt-body" id="shop-sec-packs">
+      <div class="shop-packs-header" style="flex-shrink:0">
+        <div>
+          <h3 style="margin:0 0 .2rem;color:var(--gold)">Packs</h3>
+          <p style="color:var(--muted);font-size:.85rem;margin:0">Pick a set, then grab a pack, bundle, or box.</p>
+        </div>
+        <div class="shop-set-picker">
+          <label for="shop-pack-set">Set</label>
+          <select id="shop-pack-set">
+            <option value="Base Set">Base Set</option>
+            <option value="Jungle">Jungle</option>
+            <option value="Fossil">Fossil</option>
+          </select>
+        </div>
+      </div>
+      <div class="page-scroll">
+      <div class="shop-grid shop-packs-grid">
+        <div class="shop-item shop-pack-card">
+          <div class="shop-pack-badge">1 pack</div>
+          <h3>Single Pack</h3>
+          <p>11 cards · price-weighted</p>
+          <div class="price" id="shop-price-1">$4.00</div>
+          <div class="shop-pack-per" id="shop-per-1">$4.00 / pack</div>
+          <button class="btn" onclick="buyShopPacks(1)">Buy 1</button>
+        </div>
+        <div class="shop-item shop-pack-card shop-pack-featured">
+          <div class="shop-pack-badge save" id="shop-badge-3">Save ~17%</div>
+          <h3>3 Pack Bundle</h3>
+          <p>3 packs · slight savings</p>
+          <div class="price" id="shop-price-3">$10.00</div>
+          <div class="shop-pack-per" id="shop-per-3">$3.33 / pack</div>
+          <button class="btn" onclick="buyShopPacks(3)">Buy 3</button>
+        </div>
+        <div class="shop-item shop-pack-card">
+          <div class="shop-pack-badge best" id="shop-badge-36">Best value</div>
+          <h3>Booster Box</h3>
+          <p>36 packs · best value</p>
+          <div class="price" id="shop-price-36">$99.00</div>
+          <div class="shop-pack-per" id="shop-per-36">$2.75 / pack</div>
+          <button class="btn" onclick="buyShopPacks(36)">Buy Box</button>
+        </div>
+      </div>
+
+      <div class="shop-item shop-pack-card shop-pack-featured" id="mystery-box-card" style="margin-top:1rem;max-width:420px;border-color:rgba(255,203,5,.45)">
+        <div class="shop-pack-badge best" id="mystery-box-badge">Fridays only</div>
+        <h3>🎁 Mystery Box Friday</h3>
+        <p id="mystery-box-desc">Flat price · mixed sets · junk to chase. Wide variance, no set guarantee.</p>
+        <div class="price" id="shop-price-mystery">$25.00</div>
+        <div class="shop-pack-per" id="shop-per-mystery">11 mystery cards</div>
+        <button class="btn" id="mystery-box-buy-btn" onclick="buyMysteryBox()">Buy Mystery Box</button>
+        <p id="mystery-box-status" style="color:var(--muted);font-size:.78rem;margin:.55rem 0 0"></p>
+      </div>
+      </div>
+    </div>
+
+    <div class="admin-section page-body mkt-body" id="shop-sec-cosmetics" style="display:none">
+      <div class="ach-list-head" style="flex-shrink:0"><b>COSMETICS</b><span style="color:var(--muted);font-size:.8rem">Style only</span></div>
+      <div class="filters" id="cosmo-cat-filters" style="margin-bottom:.7rem;flex-wrap:wrap;flex-shrink:0">
+        <button type="button" class="filter-btn active" data-cosmo-cat="all" onclick="setCosmoCat('all')">All</button>
+        <button type="button" class="filter-btn" data-cosmo-cat="badge" onclick="setCosmoCat('badge')">Badges</button>
+        <button type="button" class="filter-btn" data-cosmo-cat="title" onclick="setCosmoCat('title')">Titles</button>
+        <button type="button" class="filter-btn" data-cosmo-cat="nameColor" onclick="setCosmoCat('nameColor')">Name colors</button>
+        <button type="button" class="filter-btn" data-cosmo-cat="frame" onclick="setCosmoCat('frame')">Frames</button>
+        <button type="button" class="filter-btn" data-cosmo-cat="packSleeve" onclick="setCosmoCat('packSleeve')">Pack art</button>
+        <button type="button" class="filter-btn" data-cosmo-cat="binderTheme" onclick="setCosmoCat('binderTheme')">Binder themes</button>
+        <button type="button" class="filter-btn" data-cosmo-cat="cardBack" onclick="setCosmoCat('cardBack')">Card backs</button>
+      </div>
+      <div class="shop-grid page-scroll" id="cosmetics-grid"></div>
+    </div>
+  </div>
+
+
+  <!-- ========== ADMIN PANEL ========== -->
+  
+  <div id="rocket" class="panel">
+    <div style="display:flex;align-items:center;gap:.7rem;background:linear-gradient(135deg,#2a0f0f,#160a0a);border:1px solid #5c1f1f;border-radius:14px;padding:1rem;margin-bottom:1rem">
+      <div style="font-size:1.8rem">🚀</div>
+      <div style="flex:1">
+        <div style="color:#ff6b5c;font-weight:800;font-size:.75rem;letter-spacing:.05em;text-transform:uppercase">Emergency Transmission</div>
+        <h1 style="margin:.1rem 0;font-size:1.4rem">TEAM ROCKET HAS ATTACKED!</h1>
+        <p style="color:var(--muted);font-size:.85rem;margin:0">Face Team Rocket to win cards — but choose your battle card carefully. If you lose, your wagered card is gone.</p>
+      </div>
+      <div style="display:flex;gap:.5rem;text-align:center">
+        <div><b id="rocket-wins">0</b><div style="font-size:.7rem;color:var(--muted)">WINS</div></div>
+        <div><b id="rocket-losses">0</b><div style="font-size:.7rem;color:var(--muted)">LOSSES</div></div>
+        <div><b id="rocket-streak">0</b><div style="font-size:.7rem;color:var(--muted)">STREAK</div></div>
+      </div>
+    </div>
+
+    <div id="rocket-arena" style="display:grid;grid-template-columns:1fr auto 1fr;gap:.9rem;align-items:center;margin-bottom:1rem">
+      <div class="rocket-battle-slot" id="rocket-player-slot">
+        <div style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.4rem">Your Wager</div>
+        <div class="rocket-card-face" id="rocket-player-face">
+          <div style="color:var(--muted);text-align:center">Select a card below</div>
+        </div>
+        <div id="rocket-player-name" style="font-weight:700;margin-top:.4rem">No card selected</div>
+        <div style="font-size:.75rem;color:var(--muted)">Your card is at risk.</div>
+        <div style="display:flex;justify-content:space-between;font-size:.75rem;color:var(--muted);margin-top:.4rem">
+          <span>HP</span><span id="rocket-player-hp-label">—</span>
+        </div>
+        <div class="rocket-hpbar"><i id="rocket-player-hpbar" style="width:100%;background:#22c55e"></i></div>
+      </div>
+
+      <div style="text-align:center">
+        <div style="width:52px;height:52px;border-radius:50%;background:#b91c1c;display:flex;align-items:center;justify-content:center;font-weight:800;margin:0 auto">VS</div>
+        <div style="font-size:.7rem;color:var(--muted);margin-top:.3rem;white-space:nowrap">WINNER TAKES THE REWARD</div>
+      </div>
+
+      <div class="rocket-battle-slot" id="rocket-opp-slot">
+        <div style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.4rem">Team Rocket</div>
+        <div class="rocket-card-face" id="rocket-opp-face">
+          <div style="color:var(--muted);text-align:center">🚀<br>Opponent</div>
+        </div>
+        <div id="rocket-opp-name" style="font-weight:700;margin-top:.4rem">Waiting for battle</div>
+        <div style="font-size:.75rem;color:var(--muted)">Rocket chooses your opponent.</div>
+        <div style="display:flex;justify-content:space-between;font-size:.75rem;color:var(--muted);margin-top:.4rem">
+          <span>HP</span><span id="rocket-opp-hp-label">—</span>
+        </div>
+        <div class="rocket-hpbar"><i id="rocket-opp-hpbar" style="width:100%;background:#ef4444"></i></div>
+      </div>
+    </div>
+
+    <div id="rocket-log" style="min-height:2.2rem;text-align:center;font-size:.85rem;color:var(--muted);margin-bottom:.6rem"></div>
+
+    <div id="rocket-attack-row" style="display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap;margin-bottom:.9rem"></div>
+
+    <div style="display:flex;gap:.6rem;justify-content:center;margin-bottom:1.2rem">
+      <button type="button" class="btn btn-danger" id="rocket-battle-btn" onclick="rocketStartBattle()" disabled>⚔️ Battle Team Rocket</button>
+      <button type="button" class="btn" onclick="rocketClearWager()">Clear</button>
+    </div>
+
+    <div style="border-top:1px solid #2a2a3a;padding-top:.8rem">
+      <b style="font-size:.85rem">Choose your wager</b>
+      <div id="rocket-wager-list" style="display:flex;gap:.5rem;overflow-x:auto;padding:.5rem 0"></div>
+    </div>
+  </div>
+
+  <div id="profile" class="panel">
+    <section class="pp-hero">
+      <div class="pp-top">
+        <div class="pp-avatar" id="pp-avatar">⚡</div>
+        <div class="pp-identity">
+          <h1 class="pp-name" id="pp-name">Trainer</h1>
+          <p class="pp-tag" id="pp-tag">@trainer · Online</p>
+          <div class="pp-rank" id="pp-rank"><i>♛</i> <span>Collector</span></div>
+        </div>
+        <div class="pp-actions">
+          <button type="button" class="btn btn-secondary" onclick="navGo('trade')">↔ Trade Room</button>
+          <button type="button" class="btn" onclick="navGo('collection')">📚 Collection</button>
+        </div>
+      </div>
+      <div class="pp-stats">
+        <div class="pp-stat"><span>Collection</span><b id="pp-stat-col">0</b></div>
+        <div class="pp-stat"><span>Rare pulls</span><b id="pp-stat-rare">0</b></div>
+        <div class="pp-stat"><span>Packs opened</span><b id="pp-stat-packs">0</b></div>
+        <div class="pp-stat"><span>Trades</span><b id="pp-stat-trades">0</b></div>
+      </div>
+    </section>
+    <nav class="pp-tabs" id="pp-tabs">
+      <button type="button" class="pp-tab active" data-pptab="overview">Overview</button>
+      <button type="button" class="pp-tab" data-pptab="collection">Collection</button>
+      <button type="button" class="pp-tab" data-pptab="achievements">Achievements</button>
+      <button type="button" class="pp-tab" data-pptab="activity">Activity</button>
+    </nav>
+    <div id="pp-view"></div>
+  </div>
+
+  <div id="players" class="panel page-shell">
+    <div class="ach-title-panel page-hero">
+      <div class="ach-title-row">
+        <div class="ach-title-main">
+          <div class="ach-eyebrow">Trainer Directory</div>
+          <h1>Players</h1>
+          <p>Browse other trainers’ collections and binders (read-only).</p>
+        </div>
+        <div class="ach-summary">
+          <div class="ach-summary-card"><div class="ach-medal">👥</div><b id="pl-sum-count">—</b><span>Online</span></div>
+          <div class="ach-summary-card"><div class="ach-medal">📚</div><b>View</b><span>Collections</span></div>
+          <div class="ach-summary-card"><div class="ach-medal">📖</div><b>View</b><span>Binders</span></div>
+        </div>
+      </div>
+    </div>
+    <section class="mkt-body page-body">
+    <div id="players-list" class="page-scroll" style="margin-bottom:.5rem">Loading…</div>
+    <div id="players-view" style="display:none;flex:1;min-height:0;flex-direction:column">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem;margin-bottom:.65rem;flex-shrink:0">
+        <h3 id="players-view-title" style="color:var(--gold);margin:0">Player</h3>
+        <button class="btn btn-secondary" style="padding:.35rem .7rem;font-size:.8rem" onclick="closePlayerView()">← Back to list</button>
+      </div>
+      <div id="players-view-stats" style="color:var(--muted);font-size:.88rem;margin-bottom:.65rem;flex-shrink:0"></div>
+      <div class="mkt-tabs" style="margin-bottom:.55rem;flex-shrink:0">
+        <button class="mkt-tab active filter-btn" id="pv-tab-collection" onclick="showPlayerTab('collection')">Collection</button>
+        <button class="mkt-tab filter-btn" id="pv-tab-binder" onclick="showPlayerTab('binder')">Binder</button>
+      </div>
+      <div id="players-collection-tools" style="margin-bottom:.55rem;flex-shrink:0">
+        <input type="text" id="players-collection-search" placeholder="Search name…" autocomplete="off"
+          class="mkt-filter-input" style="max-width:320px;margin-bottom:.45rem"
+          oninput="renderPlayerCollection()">
+        <div class="filters" id="players-set-filters" style="flex-wrap:wrap"></div>
+      </div>
+      <div id="players-view-collection" class="collection-grid page-scroll"></div>
+      <div id="players-view-binder" style="display:none">
+        <div class="binder-page" id="players-binder-page"></div>
+        <div class="binder-nav" style="margin-top:.6rem;justify-content:center">
+          <button class="btn btn-secondary" onclick="playerBinderPrev()">← Prev</button>
+          <span class="binder-page-label" id="players-binder-label">Page 1</span>
+          <button class="btn btn-secondary" onclick="playerBinderNext()">Next →</button>
+        </div>
+      </div>
+    </div>
+    </section>
+  </div>
+
+  <div id="admin" class="panel page-shell">
+    <div class="ach-title-panel page-hero">
+      <div class="ach-title-row">
+        <div class="ach-title-main">
+          <div class="ach-eyebrow">Control Room</div>
+          <h1>Admin</h1>
+          <p>Accounts, tools, live events, and site updates — pick a section below.</p>
+        </div>
+        <div class="ach-summary">
+          <div class="ach-summary-card"><div class="ach-medal">👤</div><b>Users</b><span>Accounts</span></div>
+          <div class="ach-summary-card"><div class="ach-medal">⚡</div><b>Live</b><span>Events</span></div>
+          <div class="ach-summary-card"><div class="ach-medal">🛠</div><b>Tools</b><span>Dev</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mkt-topbar admin-menu-bar">
+      <div class="admin-menu" id="admin-menu">
+        <button type="button" class="admin-menu-btn active" data-admin-sec="accounts" onclick="adminShowSection('accounts')">
+          <span class="admin-menu-ico">👤</span>
+          <span class="admin-menu-label">Accounts</span>
+          <span class="admin-menu-sub">Create &amp; edit</span>
+        </button>
+        <button type="button" class="admin-menu-btn" data-admin-sec="devtools" onclick="adminShowSection('devtools')">
+          <span class="admin-menu-ico">🛠</span>
+          <span class="admin-menu-label">Dev Tools</span>
+          <span class="admin-menu-sub">Pull &amp; grants</span>
+        </button>
+        <button type="button" class="admin-menu-btn" data-admin-sec="dailygoals" onclick="adminShowSection('dailygoals')">
+          <span class="admin-menu-ico">⭐</span>
+          <span class="admin-menu-label">Daily Goals</span>
+          <span class="admin-menu-sub">Create Home quests</span>
+        </button>
+        <button type="button" class="admin-menu-btn" data-admin-sec="liveevent" onclick="adminShowSection('liveevent')">
+          <span class="admin-menu-ico">⚡</span>
+          <span class="admin-menu-label">Live Event</span>
+          <span class="admin-menu-sub">Prize wheel &amp; more</span>
+        </button>
+        <button type="button" class="admin-menu-btn" data-admin-sec="events" onclick="adminShowSection('events')">
+          <span class="admin-menu-ico">📅</span>
+          <span class="admin-menu-label">Event Schedule</span>
+          <span class="admin-menu-sub">Home center block</span>
+        </button>
+        <button type="button" class="admin-menu-btn" data-admin-sec="banners" onclick="adminShowSection('banners')">
+          <span class="admin-menu-ico">⏳</span>
+          <span class="admin-menu-label">Home Banner</span>
+          <span class="admin-menu-sub">Countdown banner</span>
+        </button>
+        <button type="button" class="admin-menu-btn" data-admin-sec="achievements" onclick="adminShowSection('achievements')">
+          <span class="admin-menu-ico">🏅</span>
+          <span class="admin-menu-label">Achievements</span>
+          <span class="admin-menu-sub">Create &amp; edit</span>
+        </button>
+        <button type="button" class="admin-menu-btn" data-admin-sec="updates" onclick="adminShowSection('updates')">
+          <span class="admin-menu-ico">📢</span>
+          <span class="admin-menu-label">Updates</span>
+          <span class="admin-menu-sub">Version notes popup</span>
+        </button>
+        <button type="button" class="admin-menu-btn" data-admin-sec="sets" onclick="adminShowSection('sets')">
+          <span class="admin-menu-ico">🗂</span>
+          <span class="admin-menu-label">Sets</span>
+          <span class="admin-menu-sub">Show / hide sets</span>
+        </button>
+      </div>
+    </div>
+
+    <section class="mkt-body page-body" id="admin-body">
+    <div class="page-scroll" id="admin-scroll">
+    <div class="admin-section" id="admin-sec-updates">
+      <div class="trade-box" style="margin-bottom:1.2rem;border-color:rgba(96,165,250,.35)">
+        <h3 style="color:#7dd3fc">📢 App update notice</h3>
+        <p style="color:var(--muted);font-size:.82rem;margin:0 0 .85rem">
+          Players see a popup when they log in (or if already online, after you publish) if they haven’t dismissed this version yet.
+        </p>
+        <label style="display:block;font-size:.75rem;color:var(--muted);margin-bottom:.2rem">Version</label>
+        <input type="text" id="upd-version" maxlength="24" placeholder="1.4.0" style="width:100%;max-width:200px;padding:.45rem .55rem;border-radius:8px;border:1px solid #2a314d;background:#0f1320;color:var(--text);margin-bottom:.55rem">
+        <label style="display:block;font-size:.75rem;color:var(--muted);margin-bottom:.2rem">Title</label>
+        <input type="text" id="upd-title" maxlength="80" placeholder="What's new" style="width:100%;max-width:420px;padding:.45rem .55rem;border-radius:8px;border:1px solid #2a314d;background:#0f1320;color:var(--text);margin-bottom:.55rem">
+        <label style="display:block;font-size:.75rem;color:var(--muted);margin-bottom:.2rem">Message</label>
+        <textarea id="upd-body" rows="5" placeholder="• Fixed live wheel turns&#10;• New shop sell rates…" style="width:100%;max-width:520px;padding:.55rem .65rem;border-radius:8px;border:1px solid #2a314d;background:#0f1320;color:var(--text);margin-bottom:.55rem;resize:vertical"></textarea>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+          <button type="button" class="btn" onclick="adminPublishUpdate()">Publish update notice</button>
+          <button type="button" class="btn btn-secondary" onclick="adminClearUpdate()">Clear notice</button>
+        </div>
+        <div id="upd-admin-msg" style="margin-top:.5rem;font-size:.85rem;color:var(--muted)"></div>
+      </div>
+
+      <div class="trade-box" style="margin-top:1.2rem;border-color:rgba(227,53,13,.4)">
+        <h3 style="color:var(--accent)">🔄 Force refresh</h3>
+        <p style="color:var(--muted);font-size:.82rem;margin:0 0 .85rem">
+          Pushes a non-dismissible popup to every player currently online, forcing them to reload the page. Use this right after deploying a breaking change.
+        </p>
+        <div style="display:flex;flex-wrap:wrap;gap:.5rem;align-items:center">
+          <button type="button" class="btn" onclick="adminForceRefresh()">Force refresh all players</button>
+          <span id="force-refresh-admin-msg" style="font-size:.8rem;color:var(--muted)"></span>
+        </div>
+      </div>
+    </div>
+
+    
+      <div class="trade-box" style="margin-top:1.2rem;border-color:rgba(74,222,128,.4)">
+        <h3 style="color:#4ade80;margin:0 0 .35rem">⚡ Live flash (online only)</h3>
+        <p style="color:var(--muted);font-size:.82rem;margin:0 0 .75rem">
+          Pops up instantly for players who are online right now. Does <b>not</b> wait for offline users. Auto-hides after 5 seconds.
+        </p>
+        <label style="display:block;font-size:.75rem;color:var(--muted);margin-bottom:.2rem">Message (emojis OK 🎉⚡🔥)</label>
+        <textarea id="flash-msg" rows="3" maxlength="200" placeholder="⚡ GOING TO BE STARTING A LIVE EVENT IN 5 MINS — BE READY!!!!!! 🔥" style="width:100%;padding:.55rem .65rem;border-radius:8px;border:1px solid #2a314d;background:#0f1320;color:var(--text);resize:vertical;margin-bottom:.55rem;font-family:inherit;font-size:.92rem;line-height:1.4"></textarea>
+        <label style="display:block;font-size:.75rem;color:var(--muted);margin-bottom:.2rem">Text color</label>
+        <select id="flash-color" style="width:100%;max-width:220px;padding:.45rem .55rem;border-radius:8px;border:1px solid #2a314d;background:#0f1320;color:var(--text);margin-bottom:.65rem">
+          <option value="gold">Gold</option>
+          <option value="white">White</option>
+          <option value="green">Green</option>
+          <option value="red">Red</option>
+          <option value="blue">Blue</option>
+          <option value="rainbow">Rainbow</option>
+        </select>
+        <div style="display:flex;flex-wrap:wrap;gap:.5rem;align-items:center">
+          <button type="button" class="btn" onclick="adminSendLiveFlash()">Send live flash</button>
+          <span id="flash-admin-msg" style="font-size:.8rem;color:var(--muted)"></span>
+        </div>
+      </div>
+<div class="admin-section" id="admin-sec-banners">
+      <div class="trade-box" style="margin-bottom:1.2rem;border-color:rgba(168,85,247,.4)">
+        <h3 style="color:#c084fc">⏳ Home countdown banner</h3>
+        <p style="color:var(--muted);font-size:.82rem;margin:0 0 .85rem">
+          Create a banner that appears at the top of Home with a live countdown. Publish it to make the same banner appear for every player.
+        </p>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:.55rem;margin-bottom:.55rem">
+          <div>
+            <label style="display:block;font-size:.75rem;color:var(--muted);margin-bottom:.2rem">Title</label>
+            <input type="text" id="hb-title" maxlength="80" placeholder="Team Rocket is coming..." style="width:100%;padding:.45rem .55rem;border-radius:8px;border:1px solid #2a314d;background:#0f1320;color:var(--text)">
+          </div>
+          <div>
+            <label style="display:block;font-size:.75rem;color:var(--muted);margin-bottom:.2rem">Kicker</label>
+            <input type="text" id="hb-kicker" maxlength="30" placeholder="COMING SOON" style="width:100%;padding:.45rem .55rem;border-radius:8px;border:1px solid #2a314d;background:#0f1320;color:var(--text)">
+          </div>
+        </div>
+        <label style="display:block;font-size:.75rem;color:var(--muted);margin-bottom:.2rem">Message</label>
+        <textarea id="hb-message" rows="3" maxlength="220" placeholder="A new feature is almost here..." style="width:100%;padding:.55rem .65rem;border-radius:8px;border:1px solid #2a314d;background:#0f1320;color:var(--text);margin-bottom:.55rem;resize:vertical"></textarea>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:.55rem;margin-bottom:.55rem">
+          <div>
+            <label style="display:block;font-size:.75rem;color:var(--muted);margin-bottom:.2rem">Countdown date &amp; time</label>
+            <input type="datetime-local" id="hb-target" style="width:100%;padding:.45rem .55rem;border-radius:8px;border:1px solid #2a314d;background:#0f1320;color:var(--text)">
+          </div>
+          <div>
+            <label style="display:block;font-size:.75rem;color:var(--muted);margin-bottom:.2rem">End / hide date (optional)</label>
+            <input type="datetime-local" id="hb-expires" style="width:100%;padding:.45rem .55rem;border-radius:8px;border:1px solid #2a314d;background:#0f1320;color:var(--text)">
+          </div>
+          <div>
+            <label style="display:block;font-size:.75rem;color:var(--muted);margin-bottom:.2rem">Accent</label>
+            <select id="hb-accent" style="width:100%;padding:.45rem .55rem;border-radius:8px;border:1px solid #2a314d;background:#0f1320;color:var(--text)">
+              <option value="gold">Gold</option>
+              <option value="purple">Purple</option>
+              <option value="red">Red</option>
+              <option value="blue">Blue</option>
+              <option value="green">Green</option>
+            </select>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:.55rem;margin-bottom:.65rem">
+          <div>
+            <label style="display:block;font-size:.75rem;color:var(--muted);margin-bottom:.2rem">Button text (optional)</label>
+            <input type="text" id="hb-button-text" maxlength="35" placeholder="Learn More" style="width:100%;padding:.45rem .55rem;border-radius:8px;border:1px solid #2a314d;background:#0f1320;color:var(--text)">
+          </div>
+          <div>
+            <label style="display:block;font-size:.75rem;color:var(--muted);margin-bottom:.2rem">Button link (optional)</label>
+            <input type="text" id="hb-button-link" maxlength="300" placeholder="https://... or #open" style="width:100%;padding:.45rem .55rem;border-radius:8px;border:1px solid #2a314d;background:#0f1320;color:var(--text)">
+          </div>
+        </div>
+        <label style="display:flex;align-items:center;gap:.5rem;font-size:.82rem;color:var(--text);margin-bottom:.75rem">
+          <input type="checkbox" id="hb-enabled" checked>
+          Show banner on Home page
+        </label>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+          <button type="button" class="btn" onclick="hbAdminSave()">Publish banner</button>
+          <button type="button" class="btn btn-secondary" onclick="hbAdminDisable()">Hide banner</button>
+          <button type="button" class="btn btn-secondary" onclick="hbAdminDelete()">Delete banner</button>
+          <button type="button" class="btn btn-secondary" onclick="hbAdminLoad()">Reload saved banner</button>
+        </div>
+        <div id="hb-admin-msg" style="margin-top:.5rem;font-size:.85rem;color:var(--muted)"></div>
+      </div>
+      <div class="trade-box" style="border-color:rgba(96,165,250,.3)">
+        <h3 style="color:#7dd3fc">How it works</h3>
+        <p style="color:var(--muted);font-size:.82rem;margin:0">
+          Set the date/time you want the countdown to reach zero. The banner updates every second for players, and the optional end date hides it afterward.
+        </p>
+      </div>
+    </div>
+
+    <div class="admin-section" id="admin-sec-sets">
+      <div class="trade-box" style="margin-bottom:1.2rem;border-color:rgba(96,165,250,.4)">
+        <h3 style="color:#7dd3fc">🗂 Sets visibility</h3>
+        <p style="color:var(--muted);font-size:.82rem;margin:0 0 .85rem">
+          Hidden sets are invisible to players — no Shop pack option, no Open Packs tab, no Collection tab, no binder shelf entry. Toggle a set visible when you're ready to launch it.
+        </p>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.65rem">
+          <input type="text" id="sets-admin-search" placeholder="Filter by name or code…" oninput="setsAdminRender()" style="flex:1;min-width:180px;padding:.45rem .55rem;border-radius:8px;border:1px solid #2a314d;background:#0f1320;color:var(--text)">
+          <button type="button" class="btn btn-secondary" onclick="setsAdminBulk(true)">Hide all shown</button>
+          <button type="button" class="btn btn-secondary" onclick="setsAdminBulk(false)">Show all shown</button>
+          <button type="button" class="btn btn-secondary" onclick="setsAdminRender()">Refresh</button>
+        </div>
+        <div style="font-size:.78rem;color:var(--muted);margin-bottom:.5rem" id="sets-admin-count"></div>
+        <div id="sets-admin-list" style="display:flex;flex-direction:column;gap:.4rem;max-height:520px;overflow-y:auto"></div>
+        <div id="sets-admin-msg" style="margin-top:.5rem;font-size:.85rem;color:var(--muted)"></div>
+      </div>
+    </div>
+
+    <div class="admin-section" id="admin-sec-achievements">
+      <div class="trade-box" style="margin-bottom:1.2rem;border-color:rgba(255,203,5,.35)">
+        <h3 style="color:var(--gold)">🏅 Achievements</h3>
+        <p style="color:var(--muted);font-size:.82rem;margin:0 0 .85rem">
+          Create achievements for players. Use <b>series + tier</b> for progressive chains (e.g. Pull 5 → Pull 10). Optional set filter and card rewards supported.
+        </p>
+        <div style="background:#0f1320;border:1px solid #2a314d;border-radius:10px;padding:.7rem .8rem;margin-bottom:1rem">
+          <h4 style="margin:0 0 .35rem;color:var(--gold);font-size:.9rem">⚡ Generate for a set</h4>
+          <p style="color:var(--muted);font-size:.78rem;margin:0 0 .55rem">
+            One click creates the standard "Set Master" + per-rarity achievements for a set, using its real card counts from Supabase. Safe to click again after adding more cards — it only fills in what's missing.
+          </p>
+          <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center">
+            <select id="ach-admin-gen-set" style="flex:1;min-width:180px;padding:.45rem .55rem;border-radius:8px;border:1px solid #2a314d;background:#0d1117;color:var(--text)">
+              <option value="">— choose a set —</option>
+            </select>
+            <button class="btn" type="button" onclick="achGenerateForSet((document.getElementById('ach-admin-gen-set')||{}).value)">Generate standard achievements</button>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.55rem;margin-bottom:.55rem">
+          <div>
+            <label style="display:block;font-size:.75rem;color:var(--muted);margin-bottom:.2rem">Name</label>
+            <input type="text" id="ach-admin-name" maxlength="60" placeholder="Baby Steps" style="width:100%;padding:.45rem .55rem;border-radius:8px;border:1px solid #2a314d;background:#0f1320;color:var(--text)">
+          </div>
+          <div>
+            <label style="display:block;font-size:.75rem;color:var(--muted);margin-bottom:.2rem">Icon (emoji)</label>
+            <input type="text" id="ach-admin-icon" maxlength="8" placeholder="📦" style="width:100%;padding:.45rem .55rem;border-radius:8px;border:1px solid #2a314d;background:#0f1320;color:var(--text)">
+          </div>
+          <div>
+            <label style="display:block;font-size:.75rem;color:var(--muted);margin-bottom:.2rem">Category</label>
+            <select id="ach-admin-cat" style="width:100%;padding:.45rem .55rem;border-radius:8px;border:1px solid #2a314d;background:#0f1320;color:var(--text)">
+              <option>Getting Started</option>
+              <option>Volume Grind</option>
+              <option>Rarity &amp; Luck</option>
+              <option>Set Completion</option>
+              <option>Streaks &amp; Timing</option>
+              <option>Social &amp; Community</option>
+              <option>Collection</option>
+              <option>Packs</option>
+              <option>Trading</option>
+              <option>Events</option>
+              <option>Novelty &amp; Fun</option>
+              <option>Value &amp; Portfolio</option>
+              <option>Heroic Feats</option>
+              <option>Hidden</option>
+            </select>
+          </div>
+          <div>
+            <label style="display:block;font-size:.75rem;color:var(--muted);margin-bottom:.2rem">Goal type</label>
+            <select id="ach-admin-goal" style="width:100%;padding:.45rem .55rem;border-radius:8px;border:1px solid #2a314d;background:#0f1320;color:var(--text)">
+              <option value="packs_opened">Packs opened (total)</option>
+              <option value="cards_owned">Unique cards owned</option>
+              <option value="rarity_owned">Own every card of a rarity</option>
+              <option value="holos_pulled">Holos / Rare Holos pulled</option>
+              <option value="trades_completed">Trades completed</option>
+              <option value="collection_value">Collection value ($)</option>
+              <option value="best_pull_value">Best single pull value ($)</option>
+              <option value="sets_completed">Sets fully completed</option>
+              <option value="manual">Manual (admin grant only)</option>
+            </select>
+          </div>
+          <div>
+            <label style="display:block;font-size:.75rem;color:var(--muted);margin-bottom:.2rem">Target</label>
+            <input type="number" id="ach-admin-target" min="1" value="10" style="width:100%;padding:.45rem .55rem;border-radius:8px;border:1px solid #2a314d;background:#0f1320;color:var(--text)">
+          </div>
+          <div>
+            <label style="display:block;font-size:.75rem;color:var(--muted);margin-bottom:.2rem">Set (optional)</label>
+            <select id="ach-admin-set" style="width:100%;padding:.45rem .55rem;border-radius:8px;border:1px solid #2a314d;background:#0f1320;color:var(--text)">
+              <option value="">Any set</option>
+              <option>Base Set</option>
+              <option>Jungle</option>
+              <option>Fossil</option>
+              <option>Wizards Black Star Promos</option>
+            </select>
+          </div>
+          <div>
+            <label style="display:block;font-size:.75rem;color:var(--muted);margin-bottom:.2rem">Rarity (for "every card of a rarity")</label>
+            <select id="ach-admin-rarity" style="width:100%;padding:.45rem .55rem;border-radius:8px;border:1px solid #2a314d;background:#0f1320;color:var(--text)">
+              <option value="">Any rarity</option>
+              <option value="common">Common</option>
+              <option value="uncommon">Uncommon</option>
+              <option value="epic">Rare</option>
+              <option value="legendary">Rare Holo</option>
+            </select>
+          </div>
+          <div>
+            <label style="display:block;font-size:.75rem;color:var(--muted);margin-bottom:.2rem">Series id (chain)</label>
+            <input type="text" id="ach-admin-series" maxlength="40" placeholder="packs_volume" style="width:100%;padding:.45rem .55rem;border-radius:8px;border:1px solid #2a314d;background:#0f1320;color:var(--text)">
+          </div>
+          <div>
+            <label style="display:block;font-size:.75rem;color:var(--muted);margin-bottom:.2rem">Tier in series</label>
+            <input type="number" id="ach-admin-tier" min="0" value="0" placeholder="1" style="width:100%;padding:.45rem .55rem;border-radius:8px;border:1px solid #2a314d;background:#0f1320;color:var(--text)">
+          </div>
+          <div>
+            <label style="display:block;font-size:.75rem;color:var(--muted);margin-bottom:.2rem">Hidden until (id)</label>
+            <input type="text" id="ach-admin-hidden" maxlength="60" placeholder="packs_5" style="width:100%;padding:.45rem .55rem;border-radius:8px;border:1px solid #2a314d;background:#0f1320;color:var(--text)">
+          </div>
+          <div>
+            <label style="display:block;font-size:.75rem;color:var(--muted);margin-bottom:.2rem">Points</label>
+            <input type="number" id="ach-admin-pts" min="0" value="25" style="width:100%;padding:.45rem .55rem;border-radius:8px;border:1px solid #2a314d;background:#0f1320;color:var(--text)">
+          </div>
+          <div>
+            <label style="display:block;font-size:.75rem;color:var(--muted);margin-bottom:.2rem">Reward $</label>
+            <input type="number" id="ach-admin-money" min="0" step="0.01" value="0" style="width:100%;padding:.45rem .55rem;border-radius:8px;border:1px solid #2a314d;background:#0f1320;color:var(--text)">
+          </div>
+          <div>
+            <label style="display:block;font-size:.75rem;color:var(--muted);margin-bottom:.2rem">Reward packs</label>
+            <input type="number" id="ach-admin-packs" min="0" value="0" style="width:100%;padding:.45rem .55rem;border-radius:8px;border:1px solid #2a314d;background:#0f1320;color:var(--text)">
+          </div>
+          <div>
+            <label style="display:block;font-size:.75rem;color:var(--muted);margin-bottom:.2rem">Reward card id/key</label>
+            <input type="text" id="ach-admin-card" maxlength="40" placeholder="BS-004" style="width:100%;padding:.45rem .55rem;border-radius:8px;border:1px solid #2a314d;background:#0f1320;color:var(--text)">
+          </div>
+        </div>
+        <div style="margin-bottom:.7rem">
+          <label style="display:block;font-size:.75rem;color:var(--muted);margin-bottom:.2rem">Description</label>
+          <input type="text" id="ach-admin-desc" maxlength="200" placeholder="Open 50 packs total." style="width:100%;padding:.45rem .55rem;border-radius:8px;border:1px solid #2a314d;background:#0f1320;color:var(--text)">
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:.55rem;align-items:center">
+          <button class="btn" type="button" id="ach-admin-savebtn" onclick="achAdminSave()">Add achievement</button>
+          <button class="btn btn-secondary" type="button" id="ach-admin-cancelbtn" onclick="achAdminClearForm()" style="display:none">Cancel edit</button>
+          <button class="btn btn-secondary" type="button" onclick="achAdminClearForm()">Clear</button>
+          <label class="btn btn-secondary" style="margin:0;cursor:pointer">
+            Import CSV
+            <input type="file" id="ach-admin-csv" accept=".csv,text/csv" style="display:none" onchange="achAdminImportCsv(event)">
+          </label>
+          <button class="btn btn-secondary" type="button" onclick="achAdminExportCsv()">Export CSV</button>
+        </div>
+        <div class="lw-msg" id="ach-admin-msg"></div>
+        <h4 style="margin:.75rem 0 .55rem;color:var(--gold);font-size:.95rem">Catalog (<span id="ach-admin-count">0</span>)</h4>
+        <div id="ach-admin-list" style="display:flex;flex-direction:column;gap:.5rem"></div>
+      </div>
+    </div>
+
+
+    <!-- EVENT SCHEDULE -->
+    <div class="admin-section" id="admin-sec-events">
+      <div class="trade-box" style="margin-bottom:1.2rem;border-color:rgba(255,203,5,.35)">
+        <h3 style="color:var(--gold)">📅 Event Schedule</h3>
+        <p style="color:var(--muted);font-size:.82rem;margin:0 0 .85rem">
+          Schedule pre-made events for the Home center block. Players see what&rsquo;s live and what&rsquo;s next — invite them separately for prize wheel rooms.
+        </p>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:.55rem;margin-bottom:.7rem">
+          <div>
+            <label style="display:block;font-size:.75rem;color:var(--muted);margin-bottom:.2rem">Event type</label>
+            <select id="ev-type" style="width:100%;padding:.45rem .55rem;border-radius:8px;border:1px solid #2a314d;background:#0f1320;color:var(--text)" onchange="evTypeChanged()">
+              <option value="mystery_box">🎁 Mystery Box</option>
+              <option value="prize_wheel">🎡 Prize Wheel</option>
+              <option value="guess_pull">🎯 Guess the Pull Count</option>
+              <option value="trade_up">🔄 Tuesday Trade-up</option>
+              <option value="echo_pulls">⚡ Echo Pulls</option>
+              <option value="team_rocket">🚀 Team Rocket Attack</option>
+              <option value="custom">✨ Custom</option>
+            </select>
+          </div>
+          <div>
+            <label style="display:block;font-size:.75rem;color:var(--muted);margin-bottom:.2rem">Title (optional override)</label>
+            <input type="text" id="ev-title" placeholder="Auto from type" maxlength="60" style="width:100%;padding:.45rem .55rem;border-radius:8px;border:1px solid #2a314d;background:#0f1320;color:var(--text)">
+          </div>
+          <div>
+            <label style="display:block;font-size:.75rem;color:var(--muted);margin-bottom:.2rem">Starts</label>
+            <input type="datetime-local" id="ev-start" style="width:100%;padding:.45rem .55rem;border-radius:8px;border:1px solid #2a314d;background:#0f1320;color:var(--text)">
+          </div>
+          <div>
+            <label style="display:block;font-size:.75rem;color:var(--muted);margin-bottom:.2rem">Ends</label>
+            <input type="datetime-local" id="ev-end" style="width:100%;padding:.45rem .55rem;border-radius:8px;border:1px solid #2a314d;background:#0f1320;color:var(--text)">
+          </div>
+        </div>
+        <div style="margin-bottom:.7rem">
+          <label style="display:block;font-size:.75rem;color:var(--muted);margin-bottom:.2rem">Notes (shown to players)</label>
+          <input type="text" id="ev-notes" placeholder="e.g. Room code in Discord / invite only" maxlength="140" style="width:100%;padding:.45rem .55rem;border-radius:8px;border:1px solid #2a314d;background:#0f1320;color:var(--text)">
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:.85rem">
+          <button class="btn" type="button" onclick="evScheduleSave()">Schedule event</button>
+          <button class="btn btn-secondary" type="button" onclick="evFormReset()">Clear form</button>
+        </div>
+        <div class="lw-msg" id="ev-admin-msg"></div>
+        <h4 style="margin:.5rem 0 .55rem;color:var(--gold);font-size:.95rem">Scheduled</h4>
+        <div id="ev-admin-list" style="display:flex;flex-direction:column;gap:.55rem"></div>
+      </div>
+    </div>
+
+
+    <!-- DAILY GOALS -->
+    <div class="admin-section" id="admin-sec-dailygoals">
+      <div class="trade-box" style="margin-bottom:1.2rem;border-color:rgba(255,203,5,.35)">
+        <h3 style="color:var(--gold)">⭐ Daily Goals</h3>
+        <p style="color:var(--muted);font-size:.82rem;margin:0 0 .85rem">Create up to three daily goals. They replace the rotating defaults and the first unfinished goal appears in Today&rsquo;s quest on Home.</p>
+        <div id="admin-daily-goals-list"></div>
+        <button class="btn btn-secondary" type="button" onclick="adminAddDailyGoal()">+ Add daily goal</button>
+        <button class="btn" type="button" onclick="adminSaveDailyGoals()" style="margin-left:.4rem">Save daily goals</button>
+        <button class="btn btn-secondary" type="button" onclick="adminUseDefaultDailyGoals()" style="margin-left:.4rem">Use rotating defaults</button>
+        <div class="lw-msg" id="admin-daily-goals-msg"></div>
+      </div>
+    </div>
+
+    <!-- ACCOUNTS -->
+    <div class="admin-section active" id="admin-sec-accounts">
+      <div class="trade-box" style="margin-bottom:1.2rem">
+      <h3>Create New Account</h3>
+      <label style="display:block;font-size:.85rem;color:var(--muted);margin-bottom:.25rem">Username</label>
+      <input type="text" id="admin-new-user" placeholder="e.g. jake" maxlength="24"
+        style="width:100%;max-width:280px;padding:.55rem .75rem;border-radius:8px;border:1px solid #2a314d;background:#0f1320;color:var(--text);margin-bottom:.7rem">
+      <label style="display:block;font-size:.85rem;color:var(--muted);margin-bottom:.25rem">Password (min 4 characters)</label>
+      <input type="password" id="admin-new-pin" placeholder="password" maxlength="64"
+        style="width:100%;max-width:280px;padding:.55rem .75rem;border-radius:8px;border:1px solid #2a314d;background:#0f1320;color:var(--text);margin-bottom:.7rem">
+      <label style="display:block;font-size:.85rem;color:var(--muted);margin-bottom:.25rem">Display name (optional)</label>
+      <input type="text" id="admin-new-display" placeholder="e.g. Jake" maxlength="32"
+        style="width:100%;max-width:280px;padding:.55rem .75rem;border-radius:8px;border:1px solid #2a314d;background:#0f1320;color:var(--text);margin-bottom:.9rem">
+      <button class="btn" onclick="adminCreateAccount()">Create Account</button>
+      <div id="admin-create-msg" style="margin-top:.6rem;font-size:.88rem;min-height:1.2em"></div>
+    </div>
+      <div class="trade-box">
+      <h3>Existing Accounts</h3>
+      <button class="btn btn-secondary" style="margin-bottom:.8rem" onclick="adminLoadUsers()">Refresh List</button>
+      <div id="admin-user-list" style="font-size:.9rem">Click Refresh to load users.</div>
+    </div>
+    </div>
+
+    <!-- DEV TOOLS -->
+    <div class="admin-section" id="admin-sec-devtools">
+      <div class="trade-box" style="margin-bottom:1.2rem;border-color:rgba(255,203,5,.35)">
+        <h3 style="color:var(--gold)">🏷 Shop Prices &amp; Sales</h3>
+        <p style="color:var(--muted);font-size:.82rem;margin:0 0 .75rem">Change pack prices anytime. Optional % off with an end time for packs and cosmetics.</p>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.6rem;margin-bottom:.75rem">
+          <div>
+            <label style="display:block;font-size:.75rem;color:var(--muted);margin-bottom:.2rem">Single pack $</label>
+            <input type="number" id="admin-pack-single" min="0.01" step="0.01" style="width:100%;padding:.45rem .55rem;border-radius:8px;border:1px solid #2a314d;background:#0f1320;color:var(--text)">
+          </div>
+          <div>
+            <label style="display:block;font-size:.75rem;color:var(--muted);margin-bottom:.2rem">3-pack bundle $</label>
+            <input type="number" id="admin-pack-bundle" min="0.01" step="0.01" style="width:100%;padding:.45rem .55rem;border-radius:8px;border:1px solid #2a314d;background:#0f1320;color:var(--text)">
+          </div>
+          <div>
+            <label style="display:block;font-size:.75rem;color:var(--muted);margin-bottom:.2rem">Booster box (36) $</label>
+            <input type="number" id="admin-pack-box" min="0.01" step="0.01" style="width:100%;padding:.45rem .55rem;border-radius:8px;border:1px solid #2a314d;background:#0f1320;color:var(--text)">
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:.6rem;margin-bottom:.75rem">
+          <div>
+            <label style="display:block;font-size:.75rem;color:var(--muted);margin-bottom:.2rem">Pack sale %</label>
+            <input type="number" id="admin-pack-sale" min="0" max="90" step="1" style="width:100%;padding:.45rem .55rem;border-radius:8px;border:1px solid #2a314d;background:#0f1320;color:var(--text)">
+          </div>
+          <div>
+            <label style="display:block;font-size:.75rem;color:var(--muted);margin-bottom:.2rem">Pack sale ends</label>
+            <input type="datetime-local" id="admin-pack-sale-end" style="width:100%;padding:.45rem .55rem;border-radius:8px;border:1px solid #2a314d;background:#0f1320;color:var(--text)">
+          </div>
+          <div>
+            <label style="display:block;font-size:.75rem;color:var(--muted);margin-bottom:.2rem">Cosmetic sale %</label>
+            <input type="number" id="admin-cosmo-sale" min="0" max="90" step="1" style="width:100%;padding:.45rem .55rem;border-radius:8px;border:1px solid #2a314d;background:#0f1320;color:var(--text)">
+          </div>
+          <div>
+            <label style="display:block;font-size:.75rem;color:var(--muted);margin-bottom:.2rem">Cosmetic sale ends</label>
+            <input type="datetime-local" id="admin-cosmo-sale-end" style="width:100%;padding:.45rem .55rem;border-radius:8px;border:1px solid #2a314d;background:#0f1320;color:var(--text)">
+          </div>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:.5rem">
+          <button class="btn" type="button" onclick="adminSaveShopPrices()">Save prices</button>
+          <button class="btn btn-secondary" type="button" onclick="adminClearSales()">Clear sales</button>
+        </div>
+        <div class="lw-msg" id="admin-shop-msg"></div>
+      </div>
+      <div class="trade-box dev-pull" style="margin-bottom:1.2rem">
+      <h3>🛠 DEV — Pull Any Card</h3>
+      <p style="color:var(--muted);font-size:.82rem;margin:0 0 .65rem">Admin only. Opens the normal reveal so you can test holos, flips, and effects.</p>
+      <select id="dev-card-select" style="width:100%;max-width:420px;padding:.5rem .65rem;border-radius:8px;border:1px solid #2a314d;background:#0f1320;color:var(--text);margin-bottom:.65rem"></select>
+      <div>
+        <button class="btn" onclick="devPullCard()">Pull selected card</button>
+      </div>
+    </div>
+      <div class="trade-box" style="margin-bottom:1.2rem">
+      <h3>Give to Player</h3>
+      <label style="display:block;font-size:.85rem;color:var(--muted);margin-bottom:.25rem">Player</label>
+      <select id="admin-grant-user" style="width:100%;max-width:320px;padding:.5rem .65rem;border-radius:8px;border:1px solid #2a314d;background:#0f1320;color:var(--text);margin-bottom:.7rem">
+        <option value="">— select user —</option>
+      </select>
+      <div style="display:flex;flex-wrap:wrap;gap:.6rem;align-items:flex-end;margin-bottom:.7rem">
+        <div>
+          <label style="display:block;font-size:.8rem;color:var(--muted);margin-bottom:.2rem">Money $</label>
+          <input type="number" id="admin-grant-money" placeholder="0" min="0" step="1"
+            style="width:100px;padding:.45rem .55rem;border-radius:8px;border:1px solid #2a314d;background:#0f1320;color:var(--text)">
+        </div>
+        <div>
+          <label style="display:block;font-size:.8rem;color:var(--muted);margin-bottom:.2rem">Packs</label>
+          <input type="number" id="admin-grant-packs" placeholder="0" min="0" step="1"
+            style="width:80px;padding:.45rem .55rem;border-radius:8px;border:1px solid #2a314d;background:#0f1320;color:var(--text)">
+        </div>
+        <button class="btn" onclick="adminGrantMoneyPacks()">Add money / packs</button>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:.6rem;align-items:flex-end">
+        <div style="flex:1;min-width:180px">
+          <label style="display:block;font-size:.8rem;color:var(--muted);margin-bottom:.2rem">Card</label>
+          <select id="admin-grant-card" style="width:100%;padding:.45rem .55rem;border-radius:8px;border:1px solid #2a314d;background:#0f1320;color:var(--text)">
+            <option value="">— select card —</option>
+          </select>
+        </div>
+        <div>
+          <label style="display:block;font-size:.8rem;color:var(--muted);margin-bottom:.2rem">Qty</label>
+          <input type="number" id="admin-grant-card-qty" value="1" min="1" max="99"
+            style="width:70px;padding:.45rem .55rem;border-radius:8px;border:1px solid #2a314d;background:#0f1320;color:var(--text)">
+        </div>
+        <button class="btn btn-secondary" onclick="adminGrantCard()">Give card</button>
+      </div>
+      <div id="admin-grant-msg" style="margin-top:.6rem;font-size:.88rem;min-height:1.2em;color:var(--muted)"></div>
+    </div>
+    </div>
+
+    <!-- LIVE EVENT -->
+    <div class="admin-section" id="admin-sec-liveevent">
+      <div class="admin-accordion">
+        <button type="button" class="admin-acc-btn open" onclick="adminToggleAcc(this)">
+          <span>🎡 Prize Wheel</span>
+          <span class="admin-acc-chevron">▾</span>
+        </button>
+        <div class="admin-acc-body open" id="admin-acc-prizewheel">
+          <div class="trade-box" style="margin-bottom:1.2rem;border-color:rgba(0,220,255,.35)">
+      <h3 style="color:#7df">⚡ Live Event — Prize Wheel</h3>
+      <p style="color:var(--muted);font-size:.82rem;margin:0 0 .75rem">Configure the wheel, pick who can join, then start. Invited trainers get a popup on their screen — no room code needed.</p>
+
+      <div class="lw-admin-row">
+        <input type="text" id="lw-title" placeholder="Event title" value="Live Prize Wheel" maxlength="48" style="flex:1;min-width:160px">
+        <label style="font-size:.82rem;color:var(--muted)">Slots
+          <input type="number" id="lw-slot-count" min="6" max="24" value="12" style="width:60px;margin-left:.3rem">
+        </label>
+      </div>
+      <div class="lw-admin-row">
+        <label style="font-size:.82rem;color:var(--muted)">Mode
+          <select id="lw-mode" onchange="lwOnModeChange()">
+            <option value="pack_pick">Pack pick (players claim packs)</option>
+            <option value="curated">Curated slots</option>
+            <option value="random">Fully random catalog</option>
+            <option value="hybrid">Hybrid (curated + random)</option>
+          </select>
+        </label>
+        <button class="btn btn-secondary" type="button" onclick="lwFillRandomSlots()">Fill with random cards</button>
+        <button class="btn btn-secondary" type="button" onclick="lwClearSlots()">Clear slots</button>
+      </div>
+      <div id="lw-pack-pool-builder" style="display:none;margin:.6rem 0 1rem;padding:.85rem;border:1px solid rgba(0,220,255,.25);border-radius:10px;background:#0a0e1a">
+        <div style="font-weight:800;color:#7df;margin-bottom:.45rem">Pack pool (unique claims)</div>
+        <p style="font-size:.78rem;color:var(--muted);margin:0 0 .55rem">Add packs for the event. For each pack, fill up to 10 prizes: specific cards, mystery cards, or cosmetics. Players claim one pack each; leftovers go to the host.</p>
+        <div id="lw-pack-pool-rows" style="display:grid;gap:.55rem"></div>
+        <button type="button" class="btn btn-secondary" style="margin-top:.55rem" onclick="lwAddPackPoolRow()">+ Add pack</button>
+        <div id="lw-pack-card-picker-wrap" style="display:none;margin-top:.75rem;padding:.75rem;border:1px solid #2a3555;border-radius:10px;background:#080b14">
+          <div style="display:flex;justify-content:space-between;gap:.5rem;align-items:center;margin-bottom:.45rem;flex-wrap:wrap">
+            <strong style="color:#7df" id="lw-pack-card-picker-title">Fill pack prizes</strong>
+            <button type="button" class="btn btn-secondary" style="padding:.25rem .5rem;font-size:.75rem" onclick="lwClosePackCardPicker()">Done</button>
+          </div>
+          <p style="font-size:.78rem;color:var(--muted);margin:0 0 .4rem" id="lw-pack-card-picker-count">0 / 10 selected</p>
+          <div id="lw-pack-selected-list" style="display:flex;flex-wrap:wrap;gap:.35rem;margin-bottom:.55rem;min-height:1.5rem"></div>
+          <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.5rem">
+            <button type="button" class="btn btn-secondary" style="padding:.3rem .55rem;font-size:.78rem" id="lw-pack-pick-mode-card" onclick="lwSetPackPickMode('card')">+ Card</button>
+            <button type="button" class="btn btn-secondary" style="padding:.3rem .55rem;font-size:.78rem" id="lw-pack-pick-mode-mystery" onclick="lwSetPackPickMode('mystery')">+ Mystery card</button>
+            <button type="button" class="btn btn-secondary" style="padding:.3rem .55rem;font-size:.78rem" id="lw-pack-pick-mode-cosmetic" onclick="lwSetPackPickMode('cosmetic')">+ Cosmetic</button>
+          </div>
+          <input type="text" id="lw-pack-card-search" placeholder="Search…" oninput="lwRenderPackCardPicker()" style="width:100%;margin-bottom:.4rem;background:#0a0e1a;border:1px solid #2a3555;border-radius:8px;color:#fff;padding:.45rem .65rem">
+          <div id="lw-pack-card-picker" class="lw-card-picker" style="max-height:220px;overflow:auto"></div>
+        </div>
+      </div>
+      <div class="lw-builder-grid" id="lw-builder-grid"></div>
+      <div class="lw-admin-row">
+        <button class="btn" type="button" onclick="lwAddCardSlot()">+ Card</button>
+        <button class="btn btn-secondary" type="button" onclick="lwAddMysterySlot()">+ Mystery card</button>
+        <button class="btn btn-secondary" type="button" onclick="lwAddRandomSlot()">+ Random card</button>
+        <button class="btn btn-secondary" type="button" onclick="lwAddPackSlot()">+ Pack</button>
+        <button class="btn btn-secondary" type="button" onclick="lwAddCosmeticSlot()">+ Cosmetic</button>
+      </div>
+      <div class="lw-admin-row" style="align-items:center">
+        <button class="btn btn-secondary" type="button" onclick="lwSaveWheelRound()">💾 Save this wheel &amp; add next</button>
+        <button class="btn btn-secondary" type="button" onclick="lwClearWheelRounds()">Clear saved wheels</button>
+        <span id="lw-wheels-summary" style="font-size:.82rem;color:#7df"></span>
+      </div>
+      <p style="font-size:.75rem;color:var(--muted);margin:.2rem 0 .5rem">Build one wheel of prizes, then <b>Save this wheel &amp; add next</b> to queue another set of cards for the next spin. Odds = slot weight ÷ total weights.</p>
+      <div id="lw-odds-summary" style="font-size:.8rem;color:#7df;margin-bottom:.5rem"></div>
+      <div id="lw-card-picker-wrap" style="display:none">
+        <p style="font-size:.82rem;color:var(--muted);margin:.4rem 0" id="lw-picker-hint">Pick a card for the selected slot:</p>
+        <input type="text" id="lw-card-search" placeholder="Search…" oninput="lwRenderPicker()" style="width:100%;margin-bottom:.4rem;background:#0a0e1a;border:1px solid #2a3555;border-radius:8px;color:#fff;padding:.45rem .65rem">
+        <div class="lw-card-picker" id="lw-card-picker"></div>
+      </div>
+
+      <div style="margin-top:1rem;padding-top:.9rem;border-top:1px solid #2a3555">
+        <label style="display:block;font-size:.85rem;color:var(--muted);margin-bottom:.35rem">Who can enter (select one or more)</label>
+        <select id="lw-invite-select" multiple size="6" style="width:100%;max-width:420px;background:#0a0e1a;border:1px solid #2a3555;border-radius:8px;color:#fff;padding:.4rem .5rem;font-size:.88rem"></select>
+        <p style="font-size:.75rem;color:var(--muted);margin:.35rem 0 .7rem">Hold Ctrl/Cmd to select multiple. They will get a popup invite when you start.</p>
+        <button class="btn" type="button" onclick="lwCreateEvent()">🚀 Start Event &amp; Send Invites</button>
+        <button class="btn btn-secondary" type="button" onclick="lwRefreshInviteList()" style="margin-left:.4rem">Refresh players</button>
+      </div>
+      <div class="lw-msg" id="lw-create-msg"></div>
+    </div>
+        </div>
+      </div>
+      <div class="admin-accordion" style="margin-top:.65rem;opacity:.55">
+        <button type="button" class="admin-acc-btn" disabled title="Coming soon">
+          <span>🎁 More events soon</span>
+          <span class="admin-acc-chevron">▾</span>
+        </button>
+      </div>
+    </div>
+    </div><!-- #admin-scroll -->
+    </section><!-- #admin-body -->
+  </div><!-- #admin -->
+
+
+  </div><!-- .app-content -->
+  <div id="home-rail-desktop-mount"><aside class="site-right-rail" id="home-side-rail" aria-label="Events, quest and leaderboard">
+    <!-- GPC parked; moved to center when Guess the Pull is scheduled live -->
+    <div id="gpc-side-park" style="display:none">
+    <div class="home-card home-side-card gpc-card" id="gpc-card" style="display:none" aria-hidden="true">
+      <div class="home-card-head"><h2><span>🎯</span> Guess the Pull Count</h2></div>
+      <div class="gpc-body">
+        <div class="gpc-count-row">
+          <div class="gpc-count" id="gpc-count"><span>0</span></div>
+          <div class="gpc-prize" id="gpc-prize">$20 prize</div>
+        </div>
+        <div class="gpc-label">Packs since last Chase</div>
+        <div class="gpc-last" id="gpc-last">Waiting for the first Chase…</div>
+        <div id="gpc-guess-area">
+          <div class="gpc-guess-row" id="gpc-guess-row">
+            <input type="number" id="gpc-guess-input" min="0" max="100000" placeholder="Your guess" inputmode="numeric"/>
+            <button type="button" class="btn" id="gpc-guess-btn" onclick="gpcSubmitGuess()">Guess</button>
+          </div>
+          <div class="gpc-status" id="gpc-status"></div>
+        </div>
+        <div class="gpc-signin" id="gpc-signin" style="display:none">Sign in to submit a guess</div>
+      </div>
+    </div>
+    </div>
+    <div class="home-card home-side-card home-upcoming" id="home-upcoming" aria-label="Upcoming events" style="display:none">
+      <div class="home-card-head"><h2><span>📅</span> Coming up</h2></div>
+      <div class="home-upcoming-list" id="home-upcoming-list" style="padding:.35rem .85rem .75rem"></div>
+    </div>
+    <div class="home-card home-side-card" id="home-quest-card">
+      <div class="home-card-head"><h2><span>★</span> Today&rsquo;s quest</h2><button class="home-link" onclick="navGo('quests')">View quests</button></div>
+      <div class="home-quest">
+        <div class="home-quest-row"><div class="home-quest-icon" id="home-quest-icon">🎁</div><div><div class="home-quest-title" id="home-quest-title">Loading daily goal…</div><div class="home-quest-copy" id="home-quest-copy">Your daily goal will appear here.</div></div></div>
+        <div class="home-quest-bar"><i></i></div>
+        <div class="home-quest-foot"><span>Daily progress</span><strong id="home-quest-progress">0 / 5</strong></div>
+        <div class="home-quest-reward" id="home-quest-reward"></div>
+      </div>
+    </div>
+    <div class="home-card home-side-card">
+      <div class="home-card-head"><h2><span>🏆</span> Leaderboard</h2><button class="home-link" onclick="navGo('leaderboard')">View all</button></div>
+      <ol class="home-mini-leaderboard" id="home-mini-leaderboard"><li><span class="home-rank">1</span><span class="home-leader-name">Loading players…</span></li></ol>
+    </div>
+<section id="home-countdown-banner" class="home-countdown-banner" style="display:none" aria-live="polite">
+            <div class="hcb-glow"></div>
+            <div class="hcb-content">
+              <div class="hcb-kicker" id="hcb-kicker">COMING SOON</div>
+              <h2 id="hcb-title">Something is coming...</h2>
+              <p id="hcb-message"></p>
+              <div class="hcb-countdown" id="hcb-countdown">
+                <div><strong id="hcb-days">00</strong><span>Days</span></div>
+                <div><strong id="hcb-hours">00</strong><span>Hours</span></div>
+                <div><strong id="hcb-minutes">00</strong><span>Minutes</span></div>
+                <div><strong id="hcb-seconds">00</strong><span>Seconds</span></div>
+              </div>
+              <a id="hcb-button" class="btn hcb-button" href="#" style="display:none"></a>
+            </div>
+          </section>
+  </aside></div>
+</div><!-- .app-main -->
+
+
+
+<div id="catalog-confirm-modal" style="display:none;position:fixed;inset:0;z-index:400;background:rgba(0,0,0,.75);align-items:center;justify-content:center;padding:1rem" onclick="if(event.target===this)closeCatalogConfirm()">
+  <div style="background:#16161c;border:1px solid #2a314d;border-radius:14px;padding:1.2rem 1.3rem;max-width:340px;width:100%" onclick="event.stopPropagation()">
+    <h3 style="color:var(--gold);margin:0 0 .35rem">Confirm price</h3>
+    <p id="cc-card-name" style="color:var(--muted);font-size:.88rem;margin:0 0 .75rem">—</p>
+    <label style="font-size:.8rem;color:var(--muted)">Type the price from the kid guide or PDF</label>
+    <input id="cc-price-input" type="text" inputmode="decimal" placeholder="e.g. 12.50" style="width:100%;margin:.35rem 0 .75rem;padding:.55rem .65rem;border-radius:8px;border:1px solid #2a314d;background:#0f1320;color:var(--text)" />
+    <div style="display:flex;gap:.45rem;flex-wrap:wrap">
+      <button class="btn" onclick="submitCatalogConfirm()">Confirm</button>
+      <button class="btn btn-secondary" onclick="closeCatalogConfirm()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div id="kid-price-guide-modal" style="display:none;position:fixed;inset:0;z-index:410;background:rgba(0,0,0,.8);align-items:center;justify-content:center;padding:1rem" onclick="if(event.target===this)closeKidPriceGuide()">
+  <div style="background:#12141c;border:1px solid #2a314d;border-radius:16px;padding:1rem 1.15rem;max-width:640px;width:100%;max-height:min(88vh,720px);display:flex;flex-direction:column;gap:.65rem" onclick="event.stopPropagation()">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.75rem">
+      <div>
+        <h3 style="color:var(--gold);margin:0 0 .25rem">📋 Kid price guide</h3>
+        <p style="color:var(--muted);font-size:.82rem;margin:0">Find your card, remember the price, then go back and tap <b>Confirm from guide</b> to type it in.</p>
+      </div>
+      <button type="button" class="btn btn-secondary" style="padding:.3rem .55rem;flex-shrink:0" onclick="closeKidPriceGuide()">Close</button>
+    </div>
+    <input type="text" id="kid-guide-search" placeholder="Search name or number…" oninput="renderKidPriceGuide()" style="width:100%;padding:.5rem .65rem;border-radius:8px;border:1px solid #2a314d;background:#0f1320;color:var(--text)">
+    <div id="kid-guide-list" style="overflow:auto;flex:1;min-height:0;border:1px solid #2a314d;border-radius:10px;background:#0a0c12"></div>
+  </div>
+</div>
+
+<div id="binder-inspect-modal" class="binder-inspect-modal" onclick="closeBinderInspect()">
+  <button type="button" class="binder-inspect-close" onclick="closeBinderInspect()" aria-label="Close">×</button>
+  <div class="binder-inspect-stage" id="binder-inspect-stage" onclick="event.stopPropagation()">
+    <div class="binder-inspect-card" id="binder-inspect-card">
+      <img id="binder-inspect-img" src="" alt=""/>
+      <div class="binder-inspect-glare" id="binder-inspect-glare"></div>
+      <div class="binder-inspect-sheen" id="binder-inspect-sheen"></div>
+    </div>
+    <div class="binder-inspect-name" id="binder-inspect-name"></div>
+    <div class="binder-inspect-hint">Move to tilt · click outside to put it back</div>
+  </div>
+</div>
+
+<div id="zoom-modal" class="zoom-modal" onclick="closeZoom()">
+  <div class="zoom-inner" onclick="event.stopPropagation()">
+    <div class="zoom-art-wrap" id="zoom-art-wrap">
+      <div class="psa-header" id="psa-header">
+        <div class="psa-brand">PSA</div>
+        <div class="psa-set" id="psa-set">BASE SET</div>
+        <div class="psa-card" id="psa-card-line">CARD</div>
+        <div class="psa-grade-row">
+          <span class="psa-grade-text" id="psa-grade-text">GEM MT</span>
+          <span class="psa-grade-num" id="psa-grade-num">10</span>
+        </div>
+      </div>
+      <img id="zoom-img" src="" alt="Card"/>
+      <div class="psa-footer" id="psa-footer">CERT <span id="psa-cert">00000000</span></div>
+    </div>
+    <div class="copy-nav" id="copy-nav">
+      <button type="button" id="copy-prev" onclick="zoomCopyStep(-1)" aria-label="Previous copy">‹</button>
+      <div class="copy-nav-label" id="copy-nav-label">1 / 1</div>
+      <button type="button" id="copy-next" onclick="zoomCopyStep(1)" aria-label="Next copy">›</button>
+    </div>
+    <div id="zoom-label"></div>
+    <div class="zoom-meta" id="zoom-meta">
+      <div class="zm-row"><span>Rarity</span><span id="zm-rarity">—</span></div>
+      <div class="zm-row"><span>Set</span><span id="zm-set">—</span></div>
+      <div class="zm-row"><span>Market price</span><span class="zm-price" id="zm-price">$0.00</span></div>
+      <div class="zm-row"><span>You own</span><span class="zm-owned" id="zm-owned">×0</span></div>
+      <div class="zm-row"><span>Graded</span><span id="zm-grades">—</span></div>
+      <div class="zm-row"><span>Shop pays</span><span id="zm-shop-pay" style="color:#4ade80">$0.00</span></div>
+    </div>
+    <div class="zoom-actions" id="zoom-actions">
+      <button class="btn" id="zm-research" onclick="startResearchFromZoom()">Research price</button>
+      <button class="btn" id="zm-grade" onclick="gradeFromZoom()">Grade card</button>
+      <button class="btn btn-secondary" id="zm-sell-shop" onclick="sellToShopFromZoom()">Sell to shop</button>
+      <button class="btn btn-secondary" id="zm-sell-bulk" onclick="openBulkSellModal()">Sell #…</button>
+      <button class="btn btn-secondary" id="zm-list-market" onclick="listOnMarketFromZoom()">List on market</button>
+      <button class="btn btn-secondary" id="zm-list-auction" onclick="listAuctionFromZoom()">List auction</button>
+      <button class="btn btn-secondary" id="zm-trade" onclick="tradeFromZoom()">Trade this card</button>
+      <button class="btn btn-close-modal" onclick="closeZoom()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Bulk sell popup (above zoom modal) -->
+<div id="bulk-sell-modal" class="grade-result-modal" onclick="if(event.target===this)closeBulkSellModal()">
+  <div class="grade-result-card" onclick="event.stopPropagation()">
+    <div class="gr-title">Bulk sell to shop</div>
+    <div class="gr-name" id="bulk-sell-card-name">—</div>
+    <div style="margin:.6rem 0 .3rem;color:var(--muted);font-size:.85rem" id="bulk-sell-max-label">You can sell up to 0 copies.</div>
+    <input type="number" id="bulk-sell-qty" min="1" step="1" inputmode="numeric"
+      style="width:100%;padding:.55rem .7rem;border-radius:10px;border:1px solid #2a314d;background:#0f1018;color:#fff;font-size:1rem;text-align:center;margin-bottom:.75rem" />
+    <div style="display:flex;gap:.5rem;justify-content:center">
+      <button type="button" class="btn" onclick="confirmBulkSell()">Sell</button>
+      <button type="button" class="btn btn-secondary" onclick="closeBulkSellModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Grade reveal (above zoom modal) -->
+<div id="grade-result-modal" class="grade-result-modal" onclick="closeGradeResult()">
+  <div class="grade-result-card" onclick="event.stopPropagation()">
+    <div class="gr-title">Grading complete</div>
+    <div class="gr-name" id="gr-card-name">—</div>
+    <div class="gr-score" id="gr-score">10</div>
+    <div class="gr-label" id="gr-label">PSA 10</div>
+    <div class="gr-value" id="gr-value">Graded value: $0.00</div>
+    <button type="button" class="btn" onclick="closeGradeResult()">Nice!</button>
+  </div>
+</div>
+
+<!-- Daily Luck Wheel -->
+<div id="daily-wheel-modal" onclick="if(event.target===this)closeDailyWheel()">
+  <div class="dw-panel" onclick="event.stopPropagation()">
+    <button type="button" class="dw-close" onclick="closeDailyWheel()" aria-label="Close">×</button>
+    <div class="dw-panel-hero">
+      <div class="dw-eyebrow">Daily reward</div>
+      <h2>Daily Luck Wheel</h2>
+      <p class="dw-sub">One free spin per day · live-event style rewards</p>
+    </div>
+    <div class="dw-panel-body">
+      <div class="dw-wheel-wrap">
+        <div class="dw-pointer" aria-hidden="true"></div>
+        <canvas id="dw-canvas" width="500" height="500"></canvas>
+        <button type="button" class="dw-hub-btn" id="dw-hub-btn" onclick="spinDailyWheel()">SPIN</button>
+      </div>
+      <div class="dw-legend" id="dw-legend" aria-label="Prize list"></div>
+      <button type="button" class="dw-spin-btn" id="dw-spin-btn" onclick="spinDailyWheel()">SPIN</button>
+      <div class="dw-buffs" id="dw-active-buffs"></div>
+      <div class="dw-result" id="dw-result">
+        <div class="dw-result-title" id="dw-result-title">—</div>
+        <div class="dw-result-desc" id="dw-result-desc"></div>
+        <div class="dw-result-timer" id="dw-result-timer"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="hover-preview" aria-hidden="true">
+  <div class="hp-inner">
+    <img id="hover-preview-img" src="" alt=""/>
+    <div class="hp-label" id="hover-preview-label"></div>
+  </div>
+</div>
+
+<!-- Offline trade request: send while viewing another player's card -->
+<div id="offline-trade-modal" class="trade-modal" onclick="closeOfflineTradeModal()">
+  <div class="trade-modal-inner" onclick="event.stopPropagation()">
+    <h3>Request Trade</h3>
+    <p class="tm-hint">They’ll see this when they log in — works even if they’re offline now.</p>
+    <div class="tm-label">You want from them</div>
+    <div class="tm-give" id="ot-want-block">
+      <img id="ot-want-img" src="" alt=""/>
+      <div class="tm-give-info">
+        <div class="tm-give-name" id="ot-want-name">—</div>
+        <div class="tm-give-meta" id="ot-want-meta">—</div>
+      </div>
+    </div>
+    <div class="tm-label">Which copy of theirs?</div>
+    <select id="ot-want-copy" class="trade-select" style="margin-bottom:.65rem;width:100%">
+      <option value="">Any / Raw</option>
+    </select>
+    <div class="tm-label">You offer (your cards)</div>
+    <div class="tm-want-row">
+      <select id="ot-offer-select"></select>
+      <button class="btn btn-secondary" style="padding:.35rem .65rem;font-size:.78rem" onclick="otAddOffer()">+ Add</button>
+    </div>
+    <div class="tm-want-chips" id="ot-offer-chips"></div>
+    <div class="tm-actions">
+      <button class="btn" onclick="otSendRequest()">Send Trade Request</button>
+      <button class="btn btn-close-modal" onclick="closeOfflineTradeModal()">Cancel</button>
+    </div>
+    <div id="ot-msg" style="margin-top:.5rem;font-size:.85rem;color:var(--muted);min-height:1.2em"></div>
+  </div>
+</div>
+
+<!-- Incoming offline trade request popup -->
+<div id="incoming-trade-modal" class="trade-modal" onclick="/* don't close on backdrop */">
+  <div class="trade-modal-inner" onclick="event.stopPropagation()" style="max-height:min(92vh,720px);overflow-y:auto">
+    <h3 style="color:var(--gold)" id="it-title">📩 Trade Request</h3>
+    <p class="tm-hint" id="it-from-line">Someone wants to trade.</p>
+    <div id="it-main-view">
+      <div class="tm-label">They want from you</div>
+      <div class="tm-give" id="it-want-block">
+        <img id="it-want-img" src="" alt=""/>
+        <div class="tm-give-info">
+          <div class="tm-give-name" id="it-want-name">—</div>
+          <div class="tm-give-meta" id="it-want-meta">—</div>
+        </div>
+      </div>
+      <div class="tm-label">They offer you</div>
+      <div id="it-offer-list" class="tm-want-chips" style="margin-bottom:.85rem"></div>
+      <div id="it-status" style="font-size:.85rem;color:var(--muted);margin-bottom:.6rem;min-height:1.2em"></div>
+      <div class="tm-actions">
+        <button class="btn" id="it-accept-btn" onclick="itAccept()">Accept Trade</button>
+        <button class="btn btn-secondary" onclick="itShowCounter()">Counter offer</button>
+        <button class="btn btn-secondary" onclick="itDecline()">Decline</button>
+        <button class="btn btn-close-modal" onclick="itDismiss()">Later</button>
+      </div>
+    </div>
+    <div id="it-counter-view" style="display:none">
+      <p class="tm-hint">Pick any card from their collection, and what you’ll give.</p>
+      <div class="tm-label">You want from them</div>
+      <select id="it-counter-want" class="trade-select" style="margin-bottom:.55rem"></select>
+      <div class="tm-label">You offer (your cards)</div>
+      <div class="tm-want-row">
+        <select id="it-counter-offer-select"></select>
+        <button class="btn btn-secondary" style="padding:.35rem .65rem;font-size:.78rem" onclick="itCounterAddOffer()">+ Add</button>
+      </div>
+      <div class="tm-want-chips" id="it-counter-offer-chips" style="margin-bottom:.7rem"></div>
+      <div id="it-counter-status" style="font-size:.85rem;color:var(--muted);margin-bottom:.5rem;min-height:1.2em"></div>
+      <div class="tm-actions">
+        <button class="btn" onclick="itSendCounter()">Send Counter</button>
+        <button class="btn btn-secondary" onclick="itHideCounter()">Back</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Notice when your outbound trade is declined / accepted / countered -->
+<div id="trade-notice-modal" class="trade-modal" onclick="closeTradeNotice()">
+  <div class="trade-modal-inner" onclick="event.stopPropagation()">
+    <h3 style="color:var(--gold)" id="tn-title">Trade update</h3>
+    <p class="tm-hint" id="tn-body" style="margin-bottom:1rem;line-height:1.45"></p>
+    <div class="tm-actions">
+      <button class="btn" onclick="closeTradeNotice()">OK</button>
+    </div>
+  </div>
+</div>
+
+
+<div id="gpc-modal" class="trade-modal" onclick="closeGpcModal()">
+  <div class="trade-modal-inner gpc-modal-inner" onclick="event.stopPropagation()">
+    <button type="button" class="gpc-modal-x" onclick="closeGpcModal()" aria-label="Close">×</button>
+    <div class="gpc-modal-hero">
+      <img src="art/guess-the-pull.webp" alt=""/>
+    </div>
+    <h3 class="gpc-modal-title">Guess the Pull Count</h3>
+    <p class="gpc-modal-sub">How many packs until the next Chase? Closest guess wins the pool.</p>
+    <div class="gpc-modal-stats">
+      <div>
+        <div class="gpc-modal-count" id="gpc-m-count">0</div>
+        <div class="gpc-modal-label">Packs since last Chase</div>
+      </div>
+      <div class="gpc-modal-prize" id="gpc-m-prize">$20 prize</div>
+    </div>
+    <div class="gpc-modal-last" id="gpc-m-last">Waiting for the first Chase…</div>
+    <div class="gpc-modal-guess" id="gpc-m-guess-row">
+      <input type="number" id="gpc-m-input" min="0" max="100000" placeholder="Your guess" inputmode="numeric"/>
+      <button type="button" class="btn" id="gpc-m-btn" onclick="gpcSubmitGuessFromModal()">Guess</button>
+    </div>
+    <div class="gpc-modal-status" id="gpc-m-status"></div>
+    <div class="gpc-modal-signin" id="gpc-m-signin" style="display:none">Sign in to submit a guess</div>
+  </div>
+</div>
+
+<div id="mystery-box-modal" class="trade-modal" onclick="closeMysteryBoxModal()">
+  <div class="trade-modal-inner" onclick="event.stopPropagation()" style="max-width:380px;text-align:center">
+    <img class="mb-modal-art" src="art/mystery-box-home.webp" alt="Mystery Box"/>
+    <h3 style="color:var(--gold);margin:0 0 .35rem">🎁 Mystery Box Friday</h3>
+    <p class="mb-modal-details">
+      <strong>Flat price · mixed sets · wide variance.</strong><br/>
+      11 cards from Base Set, Jungle &amp; Fossil.<br/>
+      1 rare-slot + 3 uncommon + 7 common.<br/>
+      Chase hits are rare — that’s the fun.
+    </p>
+    <div class="mb-modal-price" id="mb-modal-price">$25.00</div>
+    <div class="tm-actions" style="justify-content:center;gap:.5rem">
+      <button class="btn" id="mb-modal-buy-btn" onclick="buyMysteryBoxFromModal()">Buy Mystery Box</button>
+      <button class="btn btn-secondary" onclick="closeMysteryBoxModal()">Maybe later</button>
+    </div>
+    <p id="mb-modal-status" style="color:var(--muted);font-size:.78rem;margin:.75rem 0 0"></p>
+  </div>
+</div>
+
+<!-- Tuesday Trade-up modal - now matches Achievements card-shell exactly -->
+<div id="tradeup-modal" class="trade-modal" onclick="if(event.target===this)closeTradeUpModal()">
+  <div class="trade-modal-inner tu-modal-shell" style="max-width:960px;width:100%;background:linear-gradient(180deg,#16161c 0%,#0e1016 42%,#0b0d12 100%);border:1px solid rgba(255,203,5,.08);border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.35);overflow:hidden;display:flex;flex-direction:column;max-height:min(90vh,660px);position:relative">
+
+    <!-- Header / Title - same as ach-title-panel + page-hero -->
+    <div class="ach-title-panel" style="margin:0;padding:1.05rem 1.35rem;border-radius:0;border-bottom:1px solid rgba(255,203,5,.14);background:linear-gradient(105deg,#1c1914 0%,#141210 48%,#12141a 100%);flex-shrink:0">
+      <div class="ach-title-row">
+        <div class="ach-title-main">
+          <div class="ach-eyebrow">TUESDAY TRADE-UP</div>
+          <h1>Tuesday Trade-up</h1>
+          <p>Trade 3 cards of the same rarity for one random card of the next rarity up</p>
+          <p id="tu-limits-status" style="color:var(--muted);font-size:.78rem;margin-top:.3rem"></p>
+        </div>
+        <div class="ach-overall">
+          <strong id="tu-count">0</strong>
+          <span>/ 3</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="tu-layout">
+      <!-- Left: browse & search your collection -->
+      <div class="tu-browse">
+        <div class="trade-box" style="padding:0;overflow:hidden">
+          <div class="tu-browse-sticky">
+            <div class="ach-list-head" style="padding:0 .2rem .7rem;border-bottom:1px solid rgba(255,203,5,.08);margin-bottom:.65rem;color:#e6d6ad;font-size:.85rem">
+              Your Collection (pick up to 3 cards)
+            </div>
+            <input type="text" id="tu-search" class="trade-select" placeholder="Search your cards…" oninput="renderTradeUpModal()" style="margin-bottom:.6rem">
+            <div id="tu-rarity-filters" style="display:flex;flex-wrap:wrap;gap:.4rem">
+              <!-- populated by JS -->
+            </div>
+          </div>
+          <div id="tu-collection-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:.85rem;padding:.9rem 1.1rem 1.1rem">
+            <!-- populated by JS -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: pinned trade panel - picks & actions always visible -->
+      <div class="tu-panel">
+        <div class="tu-panel-head">Trading in</div>
+        <div id="tu-picks" class="tu-picks-col">
+          <!-- populated by JS -->
+        </div>
+
+        <div class="tm-actions" style="margin-top:auto;padding-top:.9rem;border-top:1px solid #2a314d;">
+          <button type="button" id="tu-submit-btn" class="btn" onclick="tradeUpSubmit()" style="width:100%;font-size:1rem;padding:.65rem 1.4rem;">Trade Up</button>
+          <button type="button" class="btn btn-secondary" style="width:100%;margin-left:0;margin-top:.5rem" onclick="closeTradeUpModal()">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Reward overlay - centered card, click backdrop to dismiss -->
+    <div id="tu-reward-overlay" style="position:absolute;inset:0;background:rgba(0,0,0,.86);display:none;align-items:center;justify-content:center;z-index:50;padding:1.5rem;backdrop-filter:blur(2px)" onclick="if(event.target===this)closeTuRewardOverlay()">
+      <div id="tu-reward-card" style="text-align:center" onclick="event.stopPropagation()">
+        <!-- filled by JS on submit -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="trade-modal" class="trade-modal" onclick="closeTradeModal()">
+  <div class="trade-modal-inner" onclick="event.stopPropagation()">
+    <h3>Trade</h3>
+    <p class="tm-hint">Create an offer from this card, or paste a friend’s code below.</p>
+
+    <div class="tm-label">You give</div>
+    <div class="tm-give" id="tm-give">
+      <img id="tm-give-img" src="" alt=""/>
+      <div class="tm-give-info">
+        <div class="tm-give-name" id="tm-give-name">—</div>
+        <div class="tm-give-meta" id="tm-give-meta">—</div>
+      </div>
+    </div>
+    <div class="tm-label">You want</div>
+    <div class="tm-want-row">
+      <select id="tm-want-select"></select>
+      <button class="btn btn-secondary" style="padding:.35rem .65rem;font-size:.78rem" onclick="tmAddWant()">+ Add</button>
+    </div>
+    <div class="tm-want-chips" id="tm-want-chips"></div>
+    <div class="tm-actions">
+      <button class="btn" onclick="tmCreateOffer()">Generate Offer Code</button>
+      <button class="btn btn-close-modal" onclick="closeTradeModal()">Close</button>
+    </div>
+    <div class="tm-result" id="tm-result">
+      <label>Share this offer code with a friend</label>
+      <textarea id="tm-offer-code" readonly></textarea>
+      <div class="tm-actions">
+        <button class="btn btn-secondary" onclick="copyCode('tm-offer-code')">Copy</button>
+      </div>
+    </div>
+
+    <hr class="tm-divider"/>
+
+    <div class="tm-accept">
+      <h3 style="font-size:.95rem;margin-bottom:.25rem">Accept a friend’s offer</h3>
+      <p class="tm-hint">Paste their offer code, review, then send them the completion code.</p>
+      <textarea id="tm-accept-input" placeholder="Paste offer code..."></textarea>
+      <div class="tm-actions">
+        <button class="btn" onclick="tmPreviewAccept()">Review Trade</button>
+      </div>
+      <div id="tm-accept-preview" style="display:none;margin-top:.65rem">
+        <div id="tm-accept-status" style="font-size:.82rem;margin-bottom:.45rem;color:var(--muted)"></div>
+        <div class="tm-actions">
+          <button class="btn" id="tm-accept-btn" onclick="tmConfirmAccept()" style="display:none">Accept &amp; Get Completion Code</button>
+        </div>
+        <div id="tm-completion-box" style="display:none;margin-top:.55rem">
+          <label>Send this completion code back to them</label>
+          <textarea id="tm-completion-code" readonly></textarea>
+          <div class="tm-actions">
+            <button class="btn btn-secondary" onclick="copyCode('tm-completion-code')">Copy</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <hr class="tm-divider"/>
+
+    <div class="tm-accept">
+      <h3 style="font-size:.95rem;margin-bottom:.25rem">Complete your offer</h3>
+      <p class="tm-hint">Paste the completion code your friend sent back.</p>
+      <textarea id="tm-complete-input" placeholder="Paste completion code..."></textarea>
+      <div class="tm-actions">
+        <button class="btn" onclick="tmCompleteTrade()">Complete Trade</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- PROMO PACK POPUP -->
+<div id="promo-modal" style="display:none;position:fixed;inset:0;z-index:550;background:rgba(0,0,0,.75);align-items:center;justify-content:center;padding:1rem">
+  <div style="background:linear-gradient(160deg,#1a1030,#0b0d17);border:2px solid #ffcb05;border-radius:18px;padding:1.6rem 1.4rem;max-width:360px;width:100%;text-align:center;box-shadow:0 0 40px rgba(255,203,5,.25)">
+    <div style="font-size:.75rem;font-weight:800;letter-spacing:.2em;color:#ffcb05;margin-bottom:.35rem">WIZARDS OF THE COAST</div>
+    <h2 style="color:#fff;font-size:1.6rem;margin-bottom:.4rem">★ PROMO ★</h2>
+    <p style="color:#8b93a7;font-size:.9rem;margin-bottom:1.1rem">A special Black Star Promo pack appeared!</p>
+    <div id="promo-pack-visual" style="margin:0 auto 1.1rem;width:120px;height:168px;border-radius:10px;border:2px solid #ffcb05;background:linear-gradient(145deg,#2a1a40,#150a28);display:flex;align-items:center;justify-content:center;font-size:2.5rem;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.5)" onclick="openPromoPack()">🎁</div>
+    <button class="btn" style="width:100%;margin-bottom:.5rem" onclick="openPromoPack()">Open Promo Pack</button>
+    <button class="btn btn-secondary" style="width:100%" onclick="dismissPromoModal()">Maybe later</button>
+  </div>
+</div>
+<div id="promo-reveal" style="display:none;position:fixed;inset:0;z-index:560;background:rgba(0,0,0,.85);align-items:center;justify-content:center;padding:1rem;flex-direction:column">
+  <div id="promo-reveal-card" style="max-width:280px;width:100%;margin-bottom:1rem"></div>
+  <div id="promo-reveal-name" style="color:#ffcb05;font-weight:800;font-size:1.15rem;margin-bottom:.3rem"></div>
+  <div id="promo-reveal-meta" style="color:#8b93a7;font-size:.88rem;margin-bottom:1rem"></div>
+  <button class="btn" onclick="closePromoReveal()">Awesome!</button>
+</div>
+
+<div id="gift-reveal" style="display:none;position:fixed;inset:0;z-index:570;background:rgba(0,0,0,.9);align-items:center;justify-content:center;padding:1rem;flex-direction:column">
+  <div id="gift-reveal-title" style="color:#ffcb05;font-weight:800;font-size:1.25rem;margin-bottom:.35rem">🎁 Gift!</div>
+  <div id="gift-reveal-counter" style="color:#8b93a7;font-size:.88rem;margin-bottom:1rem"></div>
+  <div class="gift-reveal-stage" id="gift-reveal-stage">
+    <div class="gift-reveal-card" id="gift-reveal-card" onclick="giftRevealFlip()">
+      <div class="gift-face gift-back"><img src="art/card-back.webp" alt="Back" class="card-back-img"/></div>
+      <div class="gift-face gift-front" id="gift-reveal-front"></div>
+    </div>
+  </div>
+  <div id="gift-reveal-name" style="color:#ffcb05;font-weight:800;font-size:1.1rem;margin-top:1rem;min-height:1.4em"></div>
+  <div id="gift-reveal-meta" style="color:#8b93a7;font-size:.88rem;margin-bottom:1rem;min-height:1.2em"></div>
+  <div id="gift-reveal-hint" style="color:#8b93a7;font-size:.85rem;margin-bottom:.8rem">Tap the package to open</div>
+  <button class="btn" id="gift-reveal-next" style="display:none" onclick="giftRevealNext()">Next</button>
+  <button class="btn" id="gift-reveal-done" style="display:none" onclick="closeGiftReveal()">Awesome!</button>
+</div>
+
+
+<div id="market-sold-modal" class="trade-modal" onclick="if(event.target===this)dismissMarketSoldModal()">
+  <div class="ms-card" onclick="event.stopPropagation()">
+    <div class="ms-eyebrow">Market sale</div>
+    <h3 class="ms-title">Your card sold!</h3>
+    <img class="ms-art hidden" id="ms-art" alt=""/>
+    <p class="ms-line" id="ms-card-line">—</p>
+    <p class="ms-line" id="ms-buyer-line">Bought by —</p>
+    <div class="ms-price" id="ms-price">$0.00</div>
+    <button type="button" class="btn ms-btn" onclick="dismissMarketSoldModal()">Nice!</button>
+  </div>
+</div>
+<div id="app-update-modal" class="trade-modal" style="display:none;z-index:400" onclick="if(event.target===this)dismissAppUpdate()">
+  <div class="trade-modal-box" style="max-width:440px;text-align:left" onclick="event.stopPropagation()">
+    <div style="font-size:.75rem;color:var(--gold);font-weight:800;letter-spacing:.06em;margin-bottom:.35rem" id="upd-modal-ver">Update</div>
+    <h3 style="margin:0 0 .55rem;color:#fff" id="upd-modal-title">What's new</h3>
+    <div id="upd-modal-body" style="white-space:pre-wrap;line-height:1.45;color:#c9d4e8;font-size:.9rem;margin-bottom:1rem"></div>
+    <button type="button" class="btn" style="width:100%" onclick="dismissAppUpdate()">Got it</button>
+  </div>
+</div>
+<div id="force-refresh-modal" role="dialog" aria-modal="true" aria-labelledby="fr-title">
+  <div class="fr-card">
+    <div class="fr-icon" aria-hidden="true">🔄</div>
+    <h3 id="fr-title">Update required</h3>
+    <p>The game has been updated. Please reload to keep playing — this only takes a second.</p>
+    <button type="button" class="fr-btn" onclick="applyForceRefresh()">Reload now</button>
+  </div>
+</div>
+<div id="live-flash-announcement" aria-live="assertive" role="alert">
+  <div class="live-flash-text" id="live-flash-text">—</div>
+  <div class="live-flash-timer" id="live-flash-timer">Closing in 5s</div>
+</div>
+<div class="toast" id="toast"></div>
+<div class="pull-alert" id="pull-alert" role="status" aria-live="polite">
+  <div class="pa-emoji" id="pa-emoji" style="display:none">🃏</div>
+  <img class="pa-art" id="pa-art" alt="" style="display:none"/>
+  <div class="pa-body">
+    <div class="pa-who" id="pa-who">Someone</div>
+    <div class="pa-msg" id="pa-msg">pulled a card</div>
+    <div class="pa-meta" id="pa-meta"></div>
+  </div>
+  <button type="button" class="pa-close" onclick="hidePullAlert()" aria-label="Dismiss">×</button>
+</div>
+
+<script src="js/core.js"></script>
+<script src="js/data.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/notifications.js"></script>
+<script src="js/admin.js"></script>
+<script src="js/trades-offline.js"></script>
+<script src="js/live-alerts.js"></script>
+<script src="js/guess-pull-count.js"></script>
+<script src="js/players.js"></script>
+<script src="js/wheel-event.js"></script>
+<script src="js/trade-room-core.js"></script>
+<script src="js/binder-market.js"></script>
+<script src="js/auction.js"></script>
+<script src="js/trading.js"></script>
+<script src="js/cosmetics.js"></script>
+<script src="js/live-events.js"></script>
+<script src="js/quests.js"></script>
+<script src="js/promo-pack.js"></script>
+<script src="js/random-market.js"></script>
+<script src="js/leaderboard.js"></script>
+<script src="js/teams.js"></script>
+<script src="js/mail.js"></script>
+<script src="js/trade-up.js"></script>
+<script src="js/achievements.js"></script>
+<script src="js/event-schedule.js"></script>
+<script src="js/home-banner.js"></script>
+<script src="js/rocket-battle.js"></script>
+<script src="js/app-update.js"></script>
+
+<div id="quest-complete-modal" onclick="if(event.target===this)closeQuestCompleteModal()">
+  <div class="quest-complete-box">
+    <div class="qc-star">⭐</div>
+    <h3 id="qc-title">Quest Complete!</h3>
+    <p id="qc-desc"></p>
+    <div class="qc-reward" id="qc-reward"></div>
+    <button class="btn" id="qc-claim-btn" onclick="claimFromQuestPopup()">Claim Reward</button>
+    <button class="btn btn-secondary" style="margin-top:.45rem" onclick="closeQuestCompleteModal(); navGo('quests');">View Quests</button>
+    <button class="btn btn-secondary" style="margin-top:.35rem" onclick="closeQuestCompleteModal()">Later</button>
+  </div>
+</div>
+
+
+<div id="first-zard-banner" role="dialog" aria-modal="true" aria-labelledby="fz-title">
+  <div class="fz-card">
+    <div class="fz-flash" aria-hidden="true"></div>
+    <div class="fz-kicker">Server milestone</div>
+    <h2 class="fz-title" id="fz-title">FIRST CHARIZARD</h2>
+    <div class="fz-art"><img id="fz-art" alt="Charizard" src=""/></div>
+    <div class="fz-who" id="fz-who"><strong>Trainer</strong> pulled it!</div>
+    <div class="fz-sub" id="fz-sub">The first Charizard on this server.</div>
+    <button type="button" class="fz-dismiss" onclick="dismissFirstZardBanner()">Awesome!</button>
+  </div>
+</div>
+
+</body>
+</html>

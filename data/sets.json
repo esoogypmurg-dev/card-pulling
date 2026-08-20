@@ -1,0 +1,30 @@
+[
+  {
+    "code": "BS",
+    "name": "Base Set",
+    "card_count": 102,
+    "cover_art": "art/base-set/",
+    "sort_order": 1
+  },
+  {
+    "code": "JU",
+    "name": "Jungle",
+    "card_count": 64,
+    "cover_art": "art/jungle/",
+    "sort_order": 2
+  },
+  {
+    "code": "PROMO",
+    "name": "Wizards Black Star Promos",
+    "card_count": 53,
+    "cover_art": "art/wizards-black-star-promos/",
+    "sort_order": 3
+  },
+  {
+    "code": "FO",
+    "name": "Fossil",
+    "card_count": 62,
+    "cover_art": "art/fossil/",
+    "sort_order": 4
+  }
+]
