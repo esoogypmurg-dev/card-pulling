@@ -2260,6 +2260,15 @@
     <button type="button" class="btn ms-btn" onclick="dismissMarketSoldModal()">Nice!</button>
   </div>
 </div>
+<div id="market-sold-batch-modal" class="trade-modal" onclick="if(event.target===this)dismissMarketSoldBatchModal()">
+  <div class="ms-card" onclick="event.stopPropagation()">
+    <div class="ms-eyebrow">Market sales</div>
+    <h3 class="ms-title" id="msb-title">3 of your cards sold!</h3>
+    <div id="msb-list" style="max-height:260px;overflow-y:auto;text-align:left;margin:.6rem 0;display:flex;flex-direction:column;gap:.35rem"></div>
+    <div class="ms-price" id="msb-total">$0.00 total</div>
+    <button type="button" class="btn ms-btn" onclick="dismissMarketSoldBatchModal()">Nice!</button>
+  </div>
+</div>
 <div id="app-update-modal" class="trade-modal" style="display:none;z-index:400" onclick="if(event.target===this)dismissAppUpdate()">
   <div class="trade-modal-box" style="max-width:440px;text-align:left" onclick="event.stopPropagation()">
     <div style="font-size:.75rem;color:var(--gold);font-weight:800;letter-spacing:.06em;margin-bottom:.35rem" id="upd-modal-ver">Update</div>

@@ -619,11 +619,51 @@ function dismissMarketSoldModal(){
   marketSoldShowing = false;
   // Credit local money if we were told a sale amount (seller side refresh)
   if(typeof updateUI === 'function') updateUI();
-  // Next in queue
-  if(marketSoldQueue.length){
+  // If more piled up while this one was showing, summarize the rest in one popup
+  // instead of walking through them one card at a time.
+  if(marketSoldQueue.length > 1){
+    const rest = marketSoldQueue.splice(0, marketSoldQueue.length);
+    setTimeout(function(){ showMarketSoldBatchModal(rest); }, 280);
+  } else if(marketSoldQueue.length === 1){
     const next = marketSoldQueue.shift();
     setTimeout(function(){ enqueueMarketSoldPopup(next); }, 280);
   }
+}
+
+/** Combined "N of your cards sold" popup — used when several sales piled up at once
+ *  (offline catch-up, or multiple sales landing while one popup was already showing). */
+function showMarketSoldBatchModal(rows){
+  if(!rows || !rows.length) return;
+  if(rows.length === 1){ showMarketSoldModal(rows[0]); return; }
+  const modal = document.getElementById('market-sold-batch-modal');
+  if(!modal) return;
+  const title = document.getElementById('msb-title');
+  const list = document.getElementById('msb-list');
+  const totalEl = document.getElementById('msb-total');
+  let total = 0;
+  if(title) title.textContent = rows.length + ' of your cards sold!';
+  if(list){
+    list.innerHTML = rows.map(r => {
+      const price = Number(r.price) || 0;
+      total += price;
+      const gradeTag = (r.grade != null && r.grade !== '')
+        ? (' · ' + (typeof gradeLabel === 'function' ? gradeLabel(Number(r.grade)) : ('PSA '+r.grade)))
+        : '';
+      return '<div style="display:flex;justify-content:space-between;gap:.6rem;font-size:.85rem;padding:.3rem 0;border-bottom:1px solid rgba(255,255,255,.08)">'+
+        '<span>' + String(r.cardName||'Card').replace(/</g,'&lt;') + gradeTag + '</span>'+
+        '<span style="font-weight:800;color:var(--gold);white-space:nowrap">$' + price.toFixed(2) + '</span></div>';
+    }).join('');
+  }
+  if(totalEl) totalEl.textContent = '$' + total.toFixed(2) + ' total';
+  modal.classList.add('open');
+  rows.forEach(r => { if(r.listingId) marketSoldSeenAdd(r.listingId); });
+  if(typeof refreshMyMoneyFromCloud === 'function') refreshMyMoneyFromCloud();
+}
+
+function dismissMarketSoldBatchModal(){
+  const modal = document.getElementById('market-sold-batch-modal');
+  if(modal) modal.classList.remove('open');
+  if(typeof updateUI === 'function') updateUI();
 }
 
 function enqueueMarketSoldPopup(payload){
@@ -727,7 +767,9 @@ function startMarketSoldWatcher(){
   }catch(e){ console.warn('[market-sold] pg watch', e); }
 }
 
-/** On login: surface recent sales the seller might have missed while offline */
+/** On login: surface recent sales the seller might have missed while offline.
+ *  A single missed sale gets the normal detailed popup; several at once get one
+ *  combined summary instead of popping up once per card. */
 async function checkMissedMarketSales(){
   if(!sb || !currentUser) return;
   try{
@@ -738,19 +780,26 @@ async function checkMissedMarketSales(){
       .eq('status', 'sold')
       .gte('sold_at', since)
       .order('sold_at', { ascending: false })
-      .limit(5);
+      .limit(25);
     if(error || !data || !data.length) return;
-    for(const row of data){
-      if(marketSoldAlreadySeen(row.id)) continue;
+    const unseen = data.filter(row => !marketSoldAlreadySeen(row.id));
+    if(!unseen.length) return;
+
+    const buyerCache = {};
+    const payloads = [];
+    for(const row of unseen){
       let buyerName = 'A trainer';
       try{
         if(row.buyer_id){
-          const { data: b } = await sb.from('profiles').select('display_name,username').eq('id', row.buyer_id).maybeSingle();
-          if(b) buyerName = b.display_name || b.username || buyerName;
+          if(!buyerCache[row.buyer_id]){
+            const { data: b } = await sb.from('profiles').select('display_name,username').eq('id', row.buyer_id).maybeSingle();
+            buyerCache[row.buyer_id] = b ? (b.display_name || b.username || buyerName) : buyerName;
+          }
+          buyerName = buyerCache[row.buyer_id];
         }
       }catch(_){}
       const card = typeof resolveCard === 'function' ? resolveCard(row.card_id) : null;
-      enqueueMarketSoldPopup({
+      payloads.push({
         listingId: row.id,
         sellerId: row.seller_id,
         buyerId: row.buyer_id,
@@ -762,9 +811,10 @@ async function checkMissedMarketSales(){
         art: card && card.art ? card.art : null,
         soldAt: row.sold_at
       });
-      // Only show one missed sale on login to avoid spam
-      break;
     }
+
+    if(payloads.length === 1) enqueueMarketSoldPopup(payloads[0]);
+    else showMarketSoldBatchModal(payloads);
   }catch(e){ console.warn('[market-sold] missed', e); }
 }
 
