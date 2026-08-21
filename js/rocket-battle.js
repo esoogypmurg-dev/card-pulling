@@ -35,11 +35,17 @@ function rocketCurrentPersona(){
 }
 
 const ROCKET_PERSONAS = {
-  grunt:    { label: 'Team Rocket Grunt', rarities: ['common','uncommon'] },
-  jessie:   { label: 'Jessie', rarities: ['epic'] },
-  james:    { label: 'James', rarities: ['epic'] },
-  giovanni: { label: 'Giovanni', rarities: ['legendary'] }
+  grunt:    { label: 'Team Rocket Grunt', rarities: ['common','uncommon'], art:'art/Team-Rocket/Grunt.webp',    pos:'45% 20%' },
+  jessie:   { label: 'Jessie',            rarities: ['epic'],              art:'art/Team-Rocket/Jessie.webp',   pos:'40% 18%' },
+  james:    { label: 'James',             rarities: ['epic'],              art:'art/Team-Rocket/James.webp',    pos:'42% 15%' },
+  giovanni: { label: 'Giovanni',          rarities: ['legendary'],         art:'art/Team-Rocket/Giovanni.webp', pos:'50% 24%' }
 };
+
+/** Cropped face-only portrait HTML for a persona, sized to fill whatever box it's put in. */
+function rocketPersonaFaceHtml(persona){
+  const p = ROCKET_PERSONAS[persona] || ROCKET_PERSONAS.grunt;
+  return `<div style="width:100%;height:100%;background-image:url('${p.art}');background-size:230% auto;background-position:${p.pos};background-repeat:no-repeat;border-radius:8px"></div>`;
+}
 
 function rocketLadderLabel(){
   const l = rocketLadderState();
@@ -193,9 +199,15 @@ function rocketRenderPreview(){
   if(card){
     playerFace.innerHTML = card.art ? `<img src="${card.art}" onerror="this.style.display='none'">` : `<div style="font-size:2.2rem">${card.emoji||'🎴'}</div>`;
     playerName.textContent = card.name;
+    playerFace.style.cursor = 'zoom-in';
+    playerFace.onmouseenter = () => { if(typeof showHoverPreview==='function') showHoverPreview(card); };
+    playerFace.onmouseleave = () => { if(typeof hideHoverPreview==='function') hideHoverPreview(); };
   }else{
     playerFace.innerHTML = '<div style="color:var(--muted);text-align:center">Select a card below</div>';
     playerName.textContent = 'No card selected';
+    playerFace.style.cursor = '';
+    playerFace.onmouseenter = null;
+    playerFace.onmouseleave = null;
   }
 
   const oppFace = document.getElementById('rocket-opp-face');
@@ -203,9 +215,16 @@ function rocketRenderPreview(){
   if(rb.opponent){
     oppFace.innerHTML = rb.opponent.art ? `<img src="${rb.opponent.art}" onerror="this.style.display='none'">` : '<div style="font-size:2.2rem">🚀</div>';
     oppName.textContent = (rb.opponent.personaLabel ? rb.opponent.personaLabel + ' sent out ' : '') + rb.opponent.name;
+    oppFace.style.cursor = 'zoom-in';
+    oppFace.onmouseenter = () => { if(typeof showHoverPreview==='function') showHoverPreview(rb.opponent); };
+    oppFace.onmouseleave = () => { if(typeof hideHoverPreview==='function') hideHoverPreview(); };
   }else{
-    oppFace.innerHTML = '<div style="color:var(--muted);text-align:center">🚀<br>Opponent</div>';
-    oppName.textContent = 'Waiting for battle';
+    const persona = rocketCurrentPersona();
+    oppFace.innerHTML = rocketPersonaFaceHtml(persona);
+    oppName.textContent = 'Waiting for battle — ' + (ROCKET_PERSONAS[persona] || ROCKET_PERSONAS.grunt).label;
+    oppFace.style.cursor = '';
+    oppFace.onmouseenter = null;
+    oppFace.onmouseleave = null;
   }
 
   const pHp = card ? (card.hp || 50) : 0;
@@ -270,11 +289,24 @@ function rocketPlayerAttack(idx){
   rocketStartTiming(idx);
 }
 
+/** Shows the shared minigame overlay with either the timing bar or the dodge prompt. */
+function rocketShowMinigame(which){
+  const modal = document.getElementById('rocket-minigame-modal');
+  const timingWrap = document.getElementById('rocket-timing-wrap');
+  const dodgeWrap = document.getElementById('rocket-dodge-wrap');
+  if(timingWrap) timingWrap.style.display = which === 'timing' ? 'block' : 'none';
+  if(dodgeWrap) dodgeWrap.style.display = which === 'dodge' ? 'block' : 'none';
+  if(modal) modal.style.display = 'flex';
+}
+function rocketHideMinigame(){
+  const modal = document.getElementById('rocket-minigame-modal');
+  if(modal) modal.style.display = 'none';
+}
+
 function rocketStartTiming(atkIdx){
-  const wrap = document.getElementById('rocket-timing-wrap');
   const zoneEl = document.getElementById('rocket-timing-zone');
   const label = document.getElementById('rocket-timing-label');
-  if(!wrap) { rocketResolvePlayerAttack(atkIdx, 1); return; }
+  if(!document.getElementById('rocket-timing-wrap')) { rocketResolvePlayerAttack(atkIdx, 1); return; }
 
   const zoneW = 14 + Math.random() * 6; // 14-20% wide
   const zoneStart = Math.random() * (100 - zoneW);
@@ -282,7 +314,7 @@ function rocketStartTiming(atkIdx){
 
   if(zoneEl){ zoneEl.style.left = zoneStart + '%'; zoneEl.style.width = zoneW + '%'; }
   if(label) label.textContent = 'Tap STRIKE in the glowing zone!';
-  wrap.style.display = 'block';
+  rocketShowMinigame('timing');
 
   const speed = 2.4; // % per tick
   rocketTiming.tickId = setInterval(() => {
@@ -304,8 +336,7 @@ function rocketTimingTap(timedOut){
   clearInterval(rocketTiming.tickId);
   clearTimeout(rocketTiming.timeoutId);
 
-  const wrap = document.getElementById('rocket-timing-wrap');
-  if(wrap) wrap.style.display = 'none';
+  rocketHideMinigame();
 
   let mult = 0.7, hitLabel = 'Miss!';
   if(!timedOut){
@@ -342,15 +373,14 @@ function rocketOpponentTurn(){
     : attacks[Math.floor(Math.random()*attacks.length)];
 
   rocketLog(rb.opponent.name + ' is winding up ' + atk.name + '...');
-  const wrap = document.getElementById('rocket-dodge-wrap');
-  if(!wrap){ rocketResolveOpponentAttack(atk, false); return; }
-  wrap.style.display = 'block';
+  if(!document.getElementById('rocket-dodge-wrap')){ rocketResolveOpponentAttack(atk, false); return; }
+  rocketShowMinigame('dodge');
   let dodged = false;
   const dodgeBtn = document.getElementById('rocket-dodge-btn');
   const handler = () => { dodged = true; };
   if(dodgeBtn) dodgeBtn.addEventListener('click', handler, { once:true });
   setTimeout(() => {
-    wrap.style.display = 'none';
+    rocketHideMinigame();
     if(dodgeBtn) dodgeBtn.removeEventListener('click', handler);
     rocketResolveOpponentAttack(atk, dodged);
   }, 900 + Math.random()*300);
@@ -396,10 +426,7 @@ async function rocketFinishBattle(won){
   clearInterval(rocketTiming.tickId);
   clearTimeout(rocketTiming.timeoutId);
   rocketTiming.active = false;
-  const timingWrap = document.getElementById('rocket-timing-wrap');
-  const dodgeWrap = document.getElementById('rocket-dodge-wrap');
-  if(timingWrap) timingWrap.style.display = 'none';
-  if(dodgeWrap) dodgeWrap.style.display = 'none';
+  rocketHideMinigame();
   const card = resolveCard(rb.wagerKey);
   const opp = rb.opponent;
 
