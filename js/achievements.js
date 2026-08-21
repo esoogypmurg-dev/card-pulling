@@ -385,7 +385,9 @@ function achClaim(id){
   if(money > 0) state.money = Math.round((state.money + money) * 100) / 100;
   if(packs > 0){
     if(typeof ensurePackQueue === 'function') ensurePackQueue();
-    for(let i=0;i<packs;i++) state.packQueue.push('Base Set');
+    let setName = a.setFilter || (typeof selectedOpenSet !== 'undefined' && selectedOpenSet) || 'Base Set';
+    if(setName === 'Wizards Black Star Promos') setName = 'Base Set';
+    for(let i=0;i<packs;i++) state.packQueue.push(setName);
     state.packs = state.packQueue.length;
   }
   let cardNote = '';

@@ -80,9 +80,6 @@ function adminShowSection(sec){
   if(sec === 'devtools' && typeof adminFillShopForm === 'function'){
     adminFillShopForm();
   }
-  if(sec === 'dailygoals' && typeof renderAdminDailyGoals === 'function'){
-    renderAdminDailyGoals();
-  }
   if(sec === 'sets' && typeof setsAdminRender === 'function'){
     setsAdminRender();
   }

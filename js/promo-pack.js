@@ -65,83 +65,127 @@ function closePromoReveal(){
 
 
 
-function uniqueOwned(setName){
-  return CARDS.filter(c => (!setName || c.set === setName) && (colGet(state.collection, c)) > 0).length;
-}
-function countByRarity(r, setName){
-  return CARDS.filter(c => c.rarity===r && (!setName || c.set === setName) && (colGet(state.collection, c))>0).length;
-}
-function totalByRarity(r, setName){
-  return CARDS.filter(c => c.rarity===r && (!setName || c.set === setName)).length;
-}
-function totalInSet(setName){
-  return CARDS.filter(c => c.set === setName).length;
-}
+/* ===== Daily Quests: 33 easy / 33 medium / 33 hard =====
+   One quest is active per tier per day (easy -> medium -> hard), unlocking
+   sequentially as each is claimed. Rewards are fixed per tier, not per-quest
+   (see DAILY_TIER_REWARDS). `dayPacksSet` quests reference "today's featured
+   set", auto-picked once per day from whichever booster sets are currently
+   live (availableBoosterSets()) — a newly released set becomes eligible with
+   no code changes here. */
+const DAILY_QUESTS_EASY = [
+  { id:'e_pack_0', title:'Warm-up Rip', desc:'Open 1 pack today', type:'dayPacks', target:1, tier:'easy' },
+  { id:'e_pack_1', title:'Quick Rip', desc:'Open 1 pack today', type:'dayPacks', target:1, tier:'easy' },
+  { id:'e_pack_2', title:'Morning Pull', desc:'Open 1 pack today', type:'dayPacks', target:1, tier:'easy' },
+  { id:'e_pack_3', title:'First Rip of the Day', desc:'Open 1 pack today', type:'dayPacks', target:1, tier:'easy' },
+  { id:'e_pack_4', title:'Just One More', desc:'Open 1 pack today', type:'dayPacks', target:1, tier:'easy' },
+  { id:'e_pack_5', title:'Double Pull', desc:'Open 2 packs today', type:'dayPacks', target:2, tier:'easy' },
+  { id:'e_fset_0', title:'Featured Set Sampler', desc:'Open 1 pack from today\'s featured set: {set}', type:'dayPacksSet', target:1, tier:'easy', set:'auto' },
+  { id:'e_fset_1', title:'Set of the Day', desc:'Open 1 pack from today\'s featured set: {set}', type:'dayPacksSet', target:1, tier:'easy', set:'auto' },
+  { id:'e_fset_2', title:'Today\'s Pick', desc:'Open 1 pack from today\'s featured set: {set}', type:'dayPacksSet', target:1, tier:'easy', set:'auto' },
+  { id:'e_fset_3', title:'Spotlight Rip', desc:'Open 1 pack from today\'s featured set: {set}', type:'dayPacksSet', target:1, tier:'easy', set:'auto' },
+  { id:'e_fset_4', title:'Featured First Rip', desc:'Open 1 pack from today\'s featured set: {set}', type:'dayPacksSet', target:1, tier:'easy', set:'auto' },
+  { id:'e_fset_5', title:'Set Spotlight', desc:'Open 2 packs from today\'s featured set: {set}', type:'dayPacksSet', target:2, tier:'easy', set:'auto' },
+  { id:'e_sell_0', title:'Quick Sale', desc:'Sell 1 duplicate today', type:'daySells', target:1, tier:'easy' },
+  { id:'e_sell_1', title:'Clear a Dupe', desc:'Sell 1 duplicate today', type:'daySells', target:1, tier:'easy' },
+  { id:'e_sell_2', title:'Tidy the Binder', desc:'Sell 1 duplicate today', type:'daySells', target:1, tier:'easy' },
+  { id:'e_sell_3', title:'Small Cash-in', desc:'Sell 1 duplicate today', type:'daySells', target:1, tier:'easy' },
+  { id:'e_sell_4', title:'Spring Cleaning', desc:'Sell 2 duplicates today', type:'daySells', target:2, tier:'easy' },
+  { id:'e_new_0', title:'Something New', desc:'Collect 1 new unique card today', type:'dayNew', target:1, tier:'easy' },
+  { id:'e_new_1', title:'Fresh Find', desc:'Collect 1 new unique card today', type:'dayNew', target:1, tier:'easy' },
+  { id:'e_new_2', title:'New Face', desc:'Collect 1 new unique card today', type:'dayNew', target:1, tier:'easy' },
+  { id:'e_new_3', title:'First Timer', desc:'Collect 1 new unique card today', type:'dayNew', target:1, tier:'easy' },
+  { id:'e_new_4', title:'A New Addition', desc:'Collect 2 new unique cards today', type:'dayNew', target:2, tier:'easy' },
+  { id:'e_money_0', title:'Pocket Change', desc:'Earn $2 from shop sales today', type:'daySaleMoney', target:2, tier:'easy' },
+  { id:'e_money_1', title:'Loose Change', desc:'Earn $2 from shop sales today', type:'daySaleMoney', target:2, tier:'easy' },
+  { id:'e_money_2', title:'A Few Bucks', desc:'Earn $3 from shop sales today', type:'daySaleMoney', target:3, tier:'easy' },
+  { id:'e_money_3', title:'Small Payday', desc:'Earn $3 from shop sales today', type:'daySaleMoney', target:3, tier:'easy' },
+  { id:'e_money_4', title:'Coffee Money', desc:'Earn $4 from shop sales today', type:'daySaleMoney', target:4, tier:'easy' },
+  { id:'e_holo_0', title:'Daily Shine', desc:'Pull 1 Rare Holo today', type:'dayHolos', target:1, tier:'easy' },
+  { id:'e_holo_1', title:'A Little Sparkle', desc:'Pull 1 Rare Holo today', type:'dayHolos', target:1, tier:'easy' },
+  { id:'e_holo_2', title:'Shiny Start', desc:'Pull 1 Rare Holo today', type:'dayHolos', target:1, tier:'easy' },
+  { id:'e_holo_3', title:'First Shine', desc:'Pull 1 Rare Holo today', type:'dayHolos', target:1, tier:'easy' },
+  { id:'e_holo_4', title:'Glimmer of Hope', desc:'Pull 1 Rare Holo today', type:'dayHolos', target:1, tier:'easy' },
+  { id:'e_holo_5', title:'Holo Hopeful', desc:'Pull 1 Rare Holo today', type:'dayHolos', target:1, tier:'easy' },
+];
 
-/* Sequential set quest chains — next unlocks after previous is claimed */
-const SET_QUEST_CHAINS = {
-  'Base Set': [
-    { id:'bs_open_3', title:'First Rips', desc:'Open 3 Base Set packs', type:'packsOpened', target:3, rewardPacks:1, rewardMoney:2, set:'Base Set' },
-    { id:'bs_open_10', title:'Pack Habit', desc:'Open 10 Base Set packs', type:'packsOpened', target:10, rewardPacks:1, rewardMoney:5, set:'Base Set' },
-    { id:'bs_open_25', title:'Booster Addict', desc:'Open 25 Base Set packs', type:'packsOpened', target:25, rewardPacks:2, rewardMoney:10, set:'Base Set' },
-    { id:'bs_own_20', title:'Growing Binder', desc:'Own 20 different Base Set cards', type:'uniqueOwned', target:20, rewardPacks:1, rewardMoney:3, set:'Base Set' },
-    { id:'bs_own_50', title:'Serious Collector', desc:'Own 50 different Base Set cards', type:'uniqueOwned', target:50, rewardPacks:1, rewardMoney:8, set:'Base Set' },
-    { id:'bs_own_80', title:'Almost There', desc:'Own 80 different Base Set cards', type:'uniqueOwned', target:80, rewardPacks:2, rewardMoney:15, set:'Base Set' },
-    { id:'bs_holo_3', title:'Holo Hunter', desc:'Pull 3 Rare Holos (any set)', type:'holosPulled', target:3, rewardPacks:1, rewardMoney:5, set:'Base Set' },
-    { id:'bs_sell_10', title:'Market Flipper', desc:'Sell 10 duplicate cards', type:'sells', target:10, rewardPacks:1, rewardMoney:4, set:'Base Set' }
-  ],
-  'Jungle': [
-    { id:'ju_open_3', title:'Jungle First Rips', desc:'Open 3 Jungle packs', type:'packsOpened', target:3, rewardPacks:1, rewardMoney:2, set:'Jungle' },
-    { id:'ju_open_10', title:'Jungle Habit', desc:'Open 10 Jungle packs', type:'packsOpened', target:10, rewardPacks:1, rewardMoney:5, set:'Jungle' },
-    { id:'ju_open_25', title:'Jungle Addict', desc:'Open 25 Jungle packs', type:'packsOpened', target:25, rewardPacks:2, rewardMoney:10, set:'Jungle' },
-    { id:'ju_own_15', title:'Jungle Starter', desc:'Own 15 different Jungle cards', type:'uniqueOwned', target:15, rewardPacks:1, rewardMoney:3, set:'Jungle' },
-    { id:'ju_own_35', title:'Jungle Collector', desc:'Own 35 different Jungle cards', type:'uniqueOwned', target:35, rewardPacks:1, rewardMoney:8, set:'Jungle' },
-    { id:'ju_own_50', title:'Deep Jungle', desc:'Own 50 different Jungle cards', type:'uniqueOwned', target:50, rewardPacks:2, rewardMoney:12, set:'Jungle' },
-    { id:'ju_holo_2', title:'Jungle Shine', desc:'Pull 2 Rare Holos (any set)', type:'holosPulled', target:2, rewardPacks:1, rewardMoney:5, set:'Jungle' },
-    { id:'ju_sell_5', title:'Jungle Trader', desc:'Sell 5 duplicate cards', type:'sells', target:5, rewardPacks:1, rewardMoney:3, set:'Jungle' }
-  ],
-  'Fossil': [
-    { id:'fo_open_3', title:'Fossil First Rips', desc:'Open 3 Fossil packs', type:'packsOpened', target:3, rewardPacks:1, rewardMoney:2, set:'Fossil' },
-    { id:'fo_open_10', title:'Fossil Habit', desc:'Open 10 Fossil packs', type:'packsOpened', target:10, rewardPacks:1, rewardMoney:5, set:'Fossil' },
-    { id:'fo_open_25', title:'Fossil Addict', desc:'Open 25 Fossil packs', type:'packsOpened', target:25, rewardPacks:2, rewardMoney:10, set:'Fossil' },
-    { id:'fo_own_15', title:'Fossil Starter', desc:'Own 15 different Fossil cards', type:'uniqueOwned', target:15, rewardPacks:1, rewardMoney:3, set:'Fossil' },
-    { id:'fo_own_35', title:'Fossil Collector', desc:'Own 35 different Fossil cards', type:'uniqueOwned', target:35, rewardPacks:1, rewardMoney:8, set:'Fossil' },
-    { id:'fo_own_50', title:'Deep Fossil', desc:'Own 50 different Fossil cards', type:'uniqueOwned', target:50, rewardPacks:2, rewardMoney:12, set:'Fossil' },
-    { id:'fo_holo_2', title:'Fossil Shine', desc:'Pull 2 Rare Holos (any set)', type:'holosPulled', target:2, rewardPacks:1, rewardMoney:5, set:'Fossil' },
-    { id:'fo_sell_5', title:'Fossil Trader', desc:'Sell 5 duplicate cards', type:'sells', target:5, rewardPacks:1, rewardMoney:3, set:'Fossil' }
-  ],
-  'Wizards Black Star Promos': [
-    { id:'pr_own_5', title:'Promo Starter', desc:'Own 5 different Promo cards', type:'uniqueOwned', target:5, rewardPacks:1, rewardMoney:5, set:'Wizards Black Star Promos' },
-    { id:'pr_own_15', title:'Promo Hunter', desc:'Own 15 different Promo cards', type:'uniqueOwned', target:15, rewardPacks:1, rewardMoney:10, set:'Wizards Black Star Promos' },
-    { id:'pr_own_30', title:'Promo Collector', desc:'Own 30 different Promo cards', type:'uniqueOwned', target:30, rewardPacks:2, rewardMoney:20, set:'Wizards Black Star Promos' },
-    { id:'pr_own_53', title:'Promo Master', desc:'Own every Black Star Promo', type:'uniqueOwned', target:53, rewardPacks:3, rewardMoney:50, set:'Wizards Black Star Promos' }
-  ]
+const DAILY_QUESTS_MEDIUM = [
+  { id:'m_pack_0', title:'Triple Rip', desc:'Open 3 packs today', type:'dayPacks', target:3, tier:'medium' },
+  { id:'m_pack_1', title:'Pack Habit', desc:'Open 3 packs today', type:'dayPacks', target:3, tier:'medium' },
+  { id:'m_pack_2', title:'Steady Rips', desc:'Open 4 packs today', type:'dayPacks', target:4, tier:'medium' },
+  { id:'m_pack_3', title:'Booster Binge', desc:'Open 4 packs today', type:'dayPacks', target:4, tier:'medium' },
+  { id:'m_pack_4', title:'Ripping Away', desc:'Open 5 packs today', type:'dayPacks', target:5, tier:'medium' },
+  { id:'m_pack_5', title:'Midday Rip Session', desc:'Open 5 packs today', type:'dayPacks', target:5, tier:'medium' },
+  { id:'m_fset_0', title:'Featured Set Focus', desc:'Open 3 packs from today\'s featured set: {set}', type:'dayPacksSet', target:3, tier:'medium', set:'auto' },
+  { id:'m_fset_1', title:'Deep Dive: Featured Set', desc:'Open 3 packs from today\'s featured set: {set}', type:'dayPacksSet', target:3, tier:'medium', set:'auto' },
+  { id:'m_fset_2', title:'Set Loyalist', desc:'Open 4 packs from today\'s featured set: {set}', type:'dayPacksSet', target:4, tier:'medium', set:'auto' },
+  { id:'m_fset_3', title:'Spotlight Streak', desc:'Open 4 packs from today\'s featured set: {set}', type:'dayPacksSet', target:4, tier:'medium', set:'auto' },
+  { id:'m_fset_4', title:'Committed to the Set', desc:'Open 5 packs from today\'s featured set: {set}', type:'dayPacksSet', target:5, tier:'medium', set:'auto' },
+  { id:'m_sell_0', title:'Vendor Day', desc:'Sell 3 duplicates today', type:'daySells', target:3, tier:'medium' },
+  { id:'m_sell_1', title:'Market Flipper', desc:'Sell 4 duplicates today', type:'daySells', target:4, tier:'medium' },
+  { id:'m_sell_2', title:'Clearing House', desc:'Sell 4 duplicates today', type:'daySells', target:4, tier:'medium' },
+  { id:'m_sell_3', title:'Dupe Dump', desc:'Sell 5 duplicates today', type:'daySells', target:5, tier:'medium' },
+  { id:'m_sell_4', title:'Steady Seller', desc:'Sell 5 duplicates today', type:'daySells', target:5, tier:'medium' },
+  { id:'m_sell_5', title:'Afternoon Flip', desc:'Sell 6 duplicates today', type:'daySells', target:6, tier:'medium' },
+  { id:'m_new_0', title:'Binder Filler', desc:'Collect 3 new unique cards today', type:'dayNew', target:3, tier:'medium' },
+  { id:'m_new_1', title:'New Arrivals', desc:'Collect 4 new unique cards today', type:'dayNew', target:4, tier:'medium' },
+  { id:'m_new_2', title:'Collection Boost', desc:'Collect 4 new unique cards today', type:'dayNew', target:4, tier:'medium' },
+  { id:'m_new_3', title:'Fresh Wave', desc:'Collect 5 new unique cards today', type:'dayNew', target:5, tier:'medium' },
+  { id:'m_new_4', title:'Building the Binder', desc:'Collect 5 new unique cards today', type:'dayNew', target:5, tier:'medium' },
+  { id:'m_new_5', title:'Widening the Binder', desc:'Collect 6 new unique cards today', type:'dayNew', target:6, tier:'medium' },
+  { id:'m_money_0', title:'Solid Payday', desc:'Earn $8 from shop sales today', type:'daySaleMoney', target:8, tier:'medium' },
+  { id:'m_money_1', title:'Good Haul', desc:'Earn $10 from shop sales today', type:'daySaleMoney', target:10, tier:'medium' },
+  { id:'m_money_2', title:'Steady Income', desc:'Earn $12 from shop sales today', type:'daySaleMoney', target:12, tier:'medium' },
+  { id:'m_money_3', title:'Market Momentum', desc:'Earn $15 from shop sales today', type:'daySaleMoney', target:15, tier:'medium' },
+  { id:'m_money_4', title:'Nice Earner', desc:'Earn $18 from shop sales today', type:'daySaleMoney', target:18, tier:'medium' },
+  { id:'m_holo_0', title:'Shine Streak', desc:'Pull 2 Rare Holos today', type:'dayHolos', target:2, tier:'medium' },
+  { id:'m_holo_1', title:'Holo Hunter', desc:'Pull 2 Rare Holos today', type:'dayHolos', target:2, tier:'medium' },
+  { id:'m_holo_2', title:'Sparkle Run', desc:'Pull 2 Rare Holos today', type:'dayHolos', target:2, tier:'medium' },
+  { id:'m_holo_3', title:'Double Shine', desc:'Pull 3 Rare Holos today', type:'dayHolos', target:3, tier:'medium' },
+  { id:'m_holo_4', title:'Shine Seeker', desc:'Pull 3 Rare Holos today', type:'dayHolos', target:3, tier:'medium' },
+];
+
+const DAILY_QUESTS_HARD = [
+  { id:'h_pack_0', title:'Pack Marathon', desc:'Open 6 packs today', type:'dayPacks', target:6, tier:'hard' },
+  { id:'h_pack_1', title:'Booster Addict', desc:'Open 7 packs today', type:'dayPacks', target:7, tier:'hard' },
+  { id:'h_pack_2', title:'Ripper\'s Challenge', desc:'Open 8 packs today', type:'dayPacks', target:8, tier:'hard' },
+  { id:'h_pack_3', title:'All-Out Rip Session', desc:'Open 9 packs today', type:'dayPacks', target:9, tier:'hard' },
+  { id:'h_pack_4', title:'Pack Overload', desc:'Open 10 packs today', type:'dayPacks', target:10, tier:'hard' },
+  { id:'h_pack_5', title:'Rip \'Til You Drop', desc:'Open 10 packs today', type:'dayPacks', target:10, tier:'hard' },
+  { id:'h_fset_0', title:'Featured Set Devotion', desc:'Open 5 packs from today\'s featured set: {set}', type:'dayPacksSet', target:5, tier:'hard', set:'auto' },
+  { id:'h_fset_1', title:'All In On the Feature', desc:'Open 6 packs from today\'s featured set: {set}', type:'dayPacksSet', target:6, tier:'hard', set:'auto' },
+  { id:'h_fset_2', title:'Set Superfan', desc:'Open 6 packs from today\'s featured set: {set}', type:'dayPacksSet', target:6, tier:'hard', set:'auto' },
+  { id:'h_fset_3', title:'Featured Set Grind', desc:'Open 7 packs from today\'s featured set: {set}', type:'dayPacksSet', target:7, tier:'hard', set:'auto' },
+  { id:'h_fset_4', title:'Spotlight Marathon', desc:'Open 8 packs from today\'s featured set: {set}', type:'dayPacksSet', target:8, tier:'hard', set:'auto' },
+  { id:'h_sell_0', title:'Liquidation Day', desc:'Sell 6 duplicates today', type:'daySells', target:6, tier:'hard' },
+  { id:'h_sell_1', title:'Market Overhaul', desc:'Sell 7 duplicates today', type:'daySells', target:7, tier:'hard' },
+  { id:'h_sell_2', title:'Full Clearance', desc:'Sell 8 duplicates today', type:'daySells', target:8, tier:'hard' },
+  { id:'h_sell_3', title:'Wholesale Push', desc:'Sell 9 duplicates today', type:'daySells', target:9, tier:'hard' },
+  { id:'h_sell_4', title:'Vendor Marathon', desc:'Sell 10 duplicates today', type:'daySells', target:10, tier:'hard' },
+  { id:'h_sell_5', title:'Total Liquidation', desc:'Sell 10 duplicates today', type:'daySells', target:10, tier:'hard' },
+  { id:'h_new_0', title:'Collector\'s Push', desc:'Collect 6 new unique cards today', type:'dayNew', target:6, tier:'hard' },
+  { id:'h_new_1', title:'Binder Expansion', desc:'Collect 7 new unique cards today', type:'dayNew', target:7, tier:'hard' },
+  { id:'h_new_2', title:'New Card Rush', desc:'Collect 8 new unique cards today', type:'dayNew', target:8, tier:'hard' },
+  { id:'h_new_3', title:'Major Haul', desc:'Collect 9 new unique cards today', type:'dayNew', target:9, tier:'hard' },
+  { id:'h_new_4', title:'Collection Overhaul', desc:'Collect 10 new unique cards today', type:'dayNew', target:10, tier:'hard' },
+  { id:'h_new_5', title:'Total Binder Rebuild', desc:'Collect 10 new unique cards today', type:'dayNew', target:10, tier:'hard' },
+  { id:'h_money_0', title:'Big Payday', desc:'Earn $20 from shop sales today', type:'daySaleMoney', target:20, tier:'hard' },
+  { id:'h_money_1', title:'Serious Income', desc:'Earn $25 from shop sales today', type:'daySaleMoney', target:25, tier:'hard' },
+  { id:'h_money_2', title:'Market Mogul', desc:'Earn $30 from shop sales today', type:'daySaleMoney', target:30, tier:'hard' },
+  { id:'h_money_3', title:'Heavy Hitter', desc:'Earn $35 from shop sales today', type:'daySaleMoney', target:35, tier:'hard' },
+  { id:'h_money_4', title:'Top Earner', desc:'Earn $40 from shop sales today', type:'daySaleMoney', target:40, tier:'hard' },
+  { id:'h_holo_0', title:'Holo Overload', desc:'Pull 3 Rare Holos today', type:'dayHolos', target:3, tier:'hard' },
+  { id:'h_holo_1', title:'Shine Master', desc:'Pull 4 Rare Holos today', type:'dayHolos', target:4, tier:'hard' },
+  { id:'h_holo_2', title:'Holo Gauntlet', desc:'Pull 4 Rare Holos today', type:'dayHolos', target:4, tier:'hard' },
+  { id:'h_holo_3', title:'Blinding Streak', desc:'Pull 5 Rare Holos today', type:'dayHolos', target:5, tier:'hard' },
+  { id:'h_holo_4', title:'Holo Frenzy', desc:'Pull 5 Rare Holos today', type:'dayHolos', target:5, tier:'hard' },
+];
+
+const DAILY_TIER_REWARDS = {
+  easy:   { packs:1,  money:5 },
+  medium: { packs:3,  money:15 },
+  hard:   { packs:10, money:25 }
 };
-
-const ACHIEVEMENT_DEFS = [
-  { id:'a_bs_common', title:'Base Commons', desc:'Own every Common in Base Set', type:'rarityOwned', rarity:'common', set:'Base Set', rewardPacks:1, rewardMoney:5 },
-  { id:'a_bs_uncommon', title:'Base Uncommons', desc:'Own every Uncommon in Base Set', type:'rarityOwned', rarity:'uncommon', set:'Base Set', rewardPacks:1, rewardMoney:8 },
-  { id:'a_bs_rare', title:'Base Rares', desc:'Own every non-holo Rare in Base Set', type:'rarityOwned', rarity:'epic', set:'Base Set', rewardPacks:2, rewardMoney:12 },
-  { id:'a_bs_holo', title:'Base Holo Master', desc:'Own every Rare Holo in Base Set', type:'rarityOwned', rarity:'legendary', set:'Base Set', rewardPacks:3, rewardMoney:25 },
-  { id:'a_bs_set', title:'Base Set Master', desc:'Own all 102 Base Set cards', type:'uniqueOwned', target:102, set:'Base Set', rewardPacks:5, rewardMoney:40 },
-  { id:'a_ju_set', title:'Jungle Master', desc:'Own all 64 Jungle cards', type:'uniqueOwned', target:64, set:'Jungle', rewardPacks:4, rewardMoney:35 },
-  { id:'a_fo_set', title:'Fossil Master', desc:'Own all 62 Fossil cards', type:'uniqueOwned', target:62, set:'Fossil', rewardPacks:4, rewardMoney:35 },
-  { id:'a_open_50', title:'Half Century', desc:'Open 50 packs total', type:'packsOpened', target:50, rewardPacks:3, rewardMoney:15 },
-  { id:'a_open_100', title:'Century Club', desc:'Open 100 packs total', type:'packsOpened', target:100, rewardPacks:5, rewardMoney:30 }
-];
-
-/* Daily rotating quest pool */
-const DAILY_QUEST_POOL = [
-  { id:'d_open_1', title:'Warm-up Rip', desc:'Open 1 pack today', type:'dayPacks', target:1, rewardPacks:1, rewardMoney:1 },
-  { id:'d_open_2', title:'Double Pull', desc:'Open 2 packs today', type:'dayPacks', target:2, rewardPacks:1, rewardMoney:2 },
-  { id:'d_open_3', title:'Triple Rip', desc:'Open 3 packs today', type:'dayPacks', target:3, rewardPacks:1, rewardMoney:3 },
-  { id:'d_sell_1', title:'Quick Sale', desc:'Sell 1 duplicate today', type:'daySells', target:1, rewardPacks:0, rewardMoney:2 },
-  { id:'d_sell_3', title:'Vendor Day', desc:'Sell 3 duplicates today', type:'daySells', target:3, rewardPacks:1, rewardMoney:3 },
-  { id:'d_new_1', title:'Something New', desc:'Collect 1 new unique card today', type:'dayNew', target:1, rewardPacks:0, rewardMoney:2 },
-  { id:'d_new_3', title:'Fresh Finds', desc:'Collect 3 new unique cards today', type:'dayNew', target:3, rewardPacks:1, rewardMoney:4 },
-  { id:'d_money_5', title:'Pocket Change', desc:'Earn $5 from shop sales today', type:'daySaleMoney', target:5, rewardPacks:0, rewardMoney:3 },
-  { id:'d_holo_1', title:'Daily Shine', desc:'Pull 1 Rare Holo today', type:'dayHolos', target:1, rewardPacks:1, rewardMoney:5 }
-];
+const DAILY_TIER_ICON = { easy:'⭐', medium:'✨', hard:'🏆' };
 
 function hashStr(s){
   let h = 0;
@@ -158,147 +202,54 @@ function ensureDailyState(){
       newCards: 0,
       saleMoney: 0,
       holos: 0,
-      claimed: {}
+      claimed: {},
+      questIds: null,
+      featuredSet: null
     };
   }
   if(!state.dailyProgress.claimed) state.dailyProgress.claimed = {};
 }
 
-let DAILY_GOAL_SETTINGS = { goals: [] };
-const DAILY_GOAL_TYPES = {
-  dayPacks: { label:'Open packs', icon:'🎴', desc:'Open packs today' },
-  daySells: { label:'Sell duplicates', icon:'💰', desc:'Sell duplicates today' },
-  dayNew: { label:'Collect new cards', icon:'✨', desc:'Collect new unique cards today' },
-  daySaleMoney: { label:'Earn sale money', icon:'💵', desc:'Earn money from sales today' },
-  dayHolos: { label:'Pull rare holos', icon:'🌟', desc:'Pull rare holos today' }
-};
-
-function normalizeDailyGoal(def){
-  if(!def || !DAILY_GOAL_TYPES[def.type]) return null;
-  const target = Math.max(1, Math.min(9999, Math.floor(Number(def.target) || 1)));
-  return {
-    id: String(def.id || ('admin_daily_' + Math.random().toString(36).slice(2,10))),
-    title: String(def.title || DAILY_GOAL_TYPES[def.type].label).trim().slice(0,48),
-    desc: String(def.desc || DAILY_GOAL_TYPES[def.type].desc).trim().slice(0,110),
-    type: def.type,
-    target,
-    rewardPacks: Math.max(0, Math.min(20, Math.floor(Number(def.rewardPacks) || 0))),
-    rewardMoney: Math.max(0, Math.min(9999, Math.round((Number(def.rewardMoney) || 0) * 100) / 100)),
-    icon: DAILY_GOAL_TYPES[def.type].icon,
-    active: def.active !== false
-  };
+function questDefById(id){
+  return DAILY_QUESTS_EASY.find(q => q.id === id)
+    || DAILY_QUESTS_MEDIUM.find(q => q.id === id)
+    || DAILY_QUESTS_HARD.find(q => q.id === id)
+    || null;
 }
 
-function activeCustomDailyGoals(){
-  const goals = Array.isArray(DAILY_GOAL_SETTINGS && DAILY_GOAL_SETTINGS.goals) ? DAILY_GOAL_SETTINGS.goals : [];
-  return goals.map(normalizeDailyGoal).filter(Boolean).filter(q => q.active).slice(0,3);
-}
-
-async function loadDailyGoalSettings(){
-  let raw = currentUser && currentUser.is_admin ? state.dailyGoalSettings : null;
-  if(!raw && sb){
-    try{
-      const { data, error } = await sb.from('profiles').select('stats,updated_at').eq('is_admin', true).order('updated_at',{ascending:false}).limit(1);
-      if(!error && data && data[0] && data[0].stats) raw = data[0].stats.dailyGoalSettings || null;
-    }catch(e){ console.warn('daily goal settings load', e); }
-  }
-  if(!raw){
-    try{ raw = JSON.parse(localStorage.getItem('pokemonDailyGoalSettings') || 'null'); }catch(e){}
-  }
-  DAILY_GOAL_SETTINGS = { goals: Array.isArray(raw && raw.goals) ? raw.goals.map(normalizeDailyGoal).filter(Boolean).slice(0,3) : [] };
-  if(currentUser && currentUser.is_admin) state.dailyGoalSettings = DAILY_GOAL_SETTINGS;
-  if(typeof updateHomeDashboard === 'function') updateHomeDashboard();
-  if(typeof renderQuests === 'function') renderQuests();
-  if(typeof renderAdminDailyGoals === 'function') renderAdminDailyGoals();
-}
-
-function todaysDailyQuests(){
+// Picks today's easy/medium/hard quest ids + a featured set, seeded by the date
+// so they stay stable across reloads/devices for the same day.
+function ensureTodayQuestChain(){
   ensureDailyState();
-  const custom = activeCustomDailyGoals();
-  if(custom.length) return custom;
-  const seed = hashStr(todayKey() + '-daily-v1');
-  // pick 3 unique from pool
-  const pool = DAILY_QUEST_POOL.slice();
-  const picks = [];
-  let s = seed;
-  while(picks.length < 3 && pool.length){
-    s = (s * 1103515245 + 12345) & 0x7fffffff;
-    const idx = s % pool.length;
-    picks.push(pool.splice(idx, 1)[0]);
+  if(Array.isArray(state.dailyProgress.questIds) && state.dailyProgress.questIds.length === 3){
+    return state.dailyProgress.questIds;
   }
-  return picks;
+  const seed = hashStr(todayKey() + '-daily-v2');
+  let s = seed || 1;
+  const next = () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return s; };
+  const easy = DAILY_QUESTS_EASY[next() % DAILY_QUESTS_EASY.length];
+  const medium = DAILY_QUESTS_MEDIUM[next() % DAILY_QUESTS_MEDIUM.length];
+  const hard = DAILY_QUESTS_HARD[next() % DAILY_QUESTS_HARD.length];
+  state.dailyProgress.questIds = [easy.id, medium.id, hard.id];
+  const sets = typeof availableBoosterSets === 'function' ? availableBoosterSets() : [];
+  state.dailyProgress.featuredSet = sets.length ? sets[next() % sets.length] : 'Base Set';
+  return state.dailyProgress.questIds;
 }
 
-function adminDailyGoalDraft(){
-  return normalizeDailyGoal({
-    id:'admin_daily_' + Date.now().toString(36) + Math.random().toString(36).slice(2,6),
-    title:'New daily goal', desc:'Open packs today', type:'dayPacks', target:1, rewardPacks:1, rewardMoney:0
+// Resolves a def's dynamic bits (today's featured set) into a concrete, displayable copy.
+function resolveQuestDef(def){
+  if(!def || def.set !== 'auto') return def;
+  ensureTodayQuestChain();
+  const setName = state.dailyProgress.featuredSet || 'Base Set';
+  return Object.assign({}, def, {
+    set: setName,
+    title: def.title.replace('{set}', setName),
+    desc: def.desc.replace('{set}', setName)
   });
 }
 
-function renderAdminDailyGoals(){
-  const wrap = document.getElementById('admin-daily-goals-list');
-  if(!wrap) return;
-  const goals = Array.isArray(DAILY_GOAL_SETTINGS.goals) ? DAILY_GOAL_SETTINGS.goals : [];
-  if(!goals.length){
-    wrap.innerHTML = '<div style="padding:.7rem .8rem;margin-bottom:.8rem;border:1px dashed #3a4256;border-radius:9px;color:var(--muted);font-size:.84rem">Using the built-in rotating daily goals. Add a goal to create your own set.</div>';
-    return;
-  }
-  wrap.innerHTML = goals.map((goal, index) => {
-    const q = normalizeDailyGoal(goal) || adminDailyGoalDraft();
-    const typeOptions = Object.entries(DAILY_GOAL_TYPES).map(([value, meta]) => '<option value="'+value+'" '+(q.type===value?'selected':'')+'>'+meta.icon+' '+meta.label+'</option>').join('');
-    return '<div class="trade-box" data-daily-goal-id="'+escapeHtml(q.id)+'" style="margin:0 0 .7rem;padding:.8rem">'
-      + '<div style="display:flex;justify-content:space-between;align-items:center;gap:.5rem;margin-bottom:.6rem"><strong style="color:var(--gold)">Daily goal '+(index+1)+'</strong><button type="button" class="btn btn-secondary" style="padding:.28rem .55rem;font-size:.74rem" onclick="adminRemoveDailyGoal(\''+q.id.replace(/'/g,"\\'")+'\')">Remove</button></div>'
-      + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.55rem">'
-      + '<label style="font-size:.75rem;color:var(--muted)">Title<input data-dg="title" value="'+escapeHtml(q.title)+'" maxlength="48" style="width:100%;margin-top:.2rem;padding:.42rem .5rem;border-radius:7px;border:1px solid #2a314d;background:#0f1320;color:var(--text)"></label>'
-      + '<label style="font-size:.75rem;color:var(--muted)">Activity<select data-dg="type" style="width:100%;margin-top:.2rem;padding:.42rem .5rem;border-radius:7px;border:1px solid #2a314d;background:#0f1320;color:var(--text)">'+typeOptions+'</select></label>'
-      + '<label style="font-size:.75rem;color:var(--muted)">Target<input data-dg="target" type="number" min="1" max="9999" value="'+q.target+'" style="width:100%;margin-top:.2rem;padding:.42rem .5rem;border-radius:7px;border:1px solid #2a314d;background:#0f1320;color:var(--text)"></label>'
-      + '<label style="font-size:.75rem;color:var(--muted)">Pack reward<input data-dg="rewardPacks" type="number" min="0" max="20" value="'+q.rewardPacks+'" style="width:100%;margin-top:.2rem;padding:.42rem .5rem;border-radius:7px;border:1px solid #2a314d;background:#0f1320;color:var(--text)"></label>'
-      + '<label style="font-size:.75rem;color:var(--muted)">Money reward<input data-dg="rewardMoney" type="number" min="0" max="9999" step="0.01" value="'+q.rewardMoney+'" style="width:100%;margin-top:.2rem;padding:.42rem .5rem;border-radius:7px;border:1px solid #2a314d;background:#0f1320;color:var(--text)"></label>'
-      + '</div><label style="display:block;font-size:.75rem;color:var(--muted);margin-top:.55rem">Description<input data-dg="desc" value="'+escapeHtml(q.desc)+'" maxlength="110" style="width:100%;margin-top:.2rem;padding:.42rem .5rem;border-radius:7px;border:1px solid #2a314d;background:#0f1320;color:var(--text)"></label>'
-      + '</div>';
-  }).join('');
-}
-
-function adminAddDailyGoal(){
-  if(!currentUser || !currentUser.is_admin) return;
-  const goals = Array.isArray(DAILY_GOAL_SETTINGS.goals) ? DAILY_GOAL_SETTINGS.goals : [];
-  if(goals.length >= 3){ showToast('You can have up to three active daily goals'); return; }
-  goals.push(adminDailyGoalDraft());
-  DAILY_GOAL_SETTINGS.goals = goals;
-  renderAdminDailyGoals();
-}
-
-function adminRemoveDailyGoal(id){
-  DAILY_GOAL_SETTINGS.goals = (DAILY_GOAL_SETTINGS.goals || []).filter(q => q.id !== id);
-  renderAdminDailyGoals();
-}
-
-async function adminSaveDailyGoals(){
-  if(!currentUser || !currentUser.is_admin){ showToast('Admin only'); return; }
-  const cards = Array.from(document.querySelectorAll('#admin-daily-goals-list [data-daily-goal-id]'));
-  const goals = cards.map(card => {
-    const value = key => { const el = card.querySelector('[data-dg="'+key+'"]'); return el ? el.value : ''; };
-    return normalizeDailyGoal({ id:card.dataset.dailyGoalId, title:value('title'), desc:value('desc'), type:value('type'), target:value('target'), rewardPacks:value('rewardPacks'), rewardMoney:value('rewardMoney') });
-  }).filter(Boolean).slice(0,3);
-  DAILY_GOAL_SETTINGS = { goals };
-  state.dailyGoalSettings = DAILY_GOAL_SETTINGS;
-  try{ localStorage.setItem('pokemonDailyGoalSettings', JSON.stringify(DAILY_GOAL_SETTINGS)); }catch(e){}
-  await save();
-  renderAdminDailyGoals();
-  updateHomeDashboard();
-  renderQuests();
-  const msg = document.getElementById('admin-daily-goals-msg');
-  if(msg){ msg.textContent = goals.length ? 'Daily goals saved for all trainers.' : 'Rotating default daily goals restored.'; msg.className='lw-msg ok'; }
-  showToast('Daily goals saved');
-}
-
-async function adminUseDefaultDailyGoals(){
-  if(!currentUser || !currentUser.is_admin){ showToast('Admin only'); return; }
-  DAILY_GOAL_SETTINGS = { goals: [] };
-  state.dailyGoalSettings = DAILY_GOAL_SETTINGS;
-  renderAdminDailyGoals();
-  await adminSaveDailyGoals();
+function todaysDailyQuests(){
+  return ensureTodayQuestChain().map(id => resolveQuestDef(questDefById(id))).filter(Boolean);
 }
 
 function trackDaily(field, amount){
@@ -307,54 +258,35 @@ function trackDaily(field, amount){
 }
 
 function questProgress(def){
-  if(def.type==='packsOpened'){
-    if(def.set && state.stats && state.stats.packsOpenedBySet){
-      return state.stats.packsOpenedBySet[def.set] || 0;
-    }
-    return state.stats.packsOpened||0;
-  }
-  if(def.type==='sells') return state.stats.sells||0;
-  if(def.type==='holosPulled') return state.stats.holosPulled||0;
-  if(def.type==='uniqueOwned') return uniqueOwned(def.set||null);
-  if(def.type==='rarityOwned') return countByRarity(def.rarity, def.set||null);
-  if(def.type==='dayPacks'){ ensureDailyState(); return state.dailyProgress.packsOpened||0; }
-  if(def.type==='daySells'){ ensureDailyState(); return state.dailyProgress.sells||0; }
-  if(def.type==='dayNew'){ ensureDailyState(); return state.dailyProgress.newCards||0; }
-  if(def.type==='daySaleMoney'){ ensureDailyState(); return Math.floor(state.dailyProgress.saleMoney||0); }
-  if(def.type==='dayHolos'){ ensureDailyState(); return state.dailyProgress.holos||0; }
+  ensureDailyState();
+  if(def.type==='dayPacks') return state.dailyProgress.packsOpened||0;
+  if(def.type==='dayPacksSet') return state.dailyProgress['packsBySet_'+def.set]||0;
+  if(def.type==='daySells') return state.dailyProgress.sells||0;
+  if(def.type==='dayNew') return state.dailyProgress.newCards||0;
+  if(def.type==='daySaleMoney') return Math.floor(state.dailyProgress.saleMoney||0);
+  if(def.type==='dayHolos') return state.dailyProgress.holos||0;
   return 0;
 }
 function questTarget(def){
-  if(def.type==='rarityOwned') return totalByRarity(def.rarity, def.set||null);
-  if(def.type==='uniqueOwned' && def.set && !def.target) return totalInSet(def.set);
   return def.target||1;
 }
 function questDone(def){
   return questProgress(def) >= questTarget(def);
 }
 function questClaimed(def){
-  if(def._daily){
-    ensureDailyState();
-    return !!state.dailyProgress.claimed[def.id];
-  }
-  return !!(state.claimed && state.claimed[def.id]);
+  ensureDailyState();
+  return !!state.dailyProgress.claimed[def.id];
 }
 
-function isQuestUnlocked(def, chain){
-  if(!chain) return true;
-  const idx = chain.findIndex(q => q.id === def.id);
-  if(idx <= 0) return true;
-  const prev = chain[idx-1];
-  return questClaimed(prev);
-}
-
-function grantQuestReward(def){
-  const packs = def.rewardPacks || def.reward || 0;
-  const money = def.rewardMoney || 0;
-  const setName = def.set || selectedOpenSet || 'Base Set';
+function grantDailyQuestReward(def){
+  const rew = DAILY_TIER_REWARDS[def.tier] || { packs:0, money:0 };
+  const packs = rew.packs;
+  const money = rew.money;
+  let setName = def.set || selectedOpenSet || 'Base Set';
+  if(setName === 'Wizards Black Star Promos') setName = 'Base Set';
   if(packs > 0){
     ensurePackQueue();
-    for(let i=0;i<packs;i++) state.packQueue.push(setName === 'Wizards Black Star Promos' ? 'Base Set' : setName);
+    for(let i=0;i<packs;i++) state.packQueue.push(setName);
     state.packs = state.packQueue.length;
   }
   if(money > 0){
@@ -367,151 +299,62 @@ function grantQuestReward(def){
 }
 
 function claimQuest(id){
-  // Daily?
-  const daily = todaysDailyQuests().find(q => q.id === id);
-  if(daily){
-    daily._daily = true;
-    if(questClaimed(daily)){ showToast('Already claimed'); return; }
-    if(!questDone(daily)){ showToast('Not complete yet'); return; }
-    ensureDailyState();
-    state.dailyProgress.claimed[id] = true;
-    const msg = grantQuestReward(daily);
-    save(); updateUI(); renderQuests();
-    showToast(msg);
-    return;
-  }
-  const all = [...Object.values(SET_QUEST_CHAINS).flat(), ...ACHIEVEMENT_DEFS];
-  const def = all.find(q => q.id === id);
+  const defs = todaysDailyQuests();
+  const def = defs.find(q => q.id === id);
   if(!def) return;
   if(questClaimed(def)){ showToast('Already claimed'); return; }
   if(!questDone(def)){ showToast('Not complete yet'); return; }
-  // check unlock for set chains
-  for(const chain of Object.values(SET_QUEST_CHAINS)){
-    if(chain.some(q => q.id === id) && !isQuestUnlocked(def, chain)){
-      showToast('Complete the previous quest first');
-      return;
-    }
+  const idx = defs.findIndex(q => q.id === id);
+  for(let i=0;i<idx;i++){
+    if(!questClaimed(defs[i])){ showToast('Complete the previous quest first'); return; }
   }
-  if(!state.claimed) state.claimed = {};
-  state.claimed[id] = true;
-  const msg = grantQuestReward(def);
+  ensureDailyState();
+  state.dailyProgress.claimed[id] = true;
+  const msg = grantDailyQuestReward(def);
   save(); updateUI(); renderQuests();
   showToast(msg);
 }
 
 function rewardText(def){
-  const packs = def.rewardPacks || def.reward || 0;
-  const money = def.rewardMoney || 0;
+  const rew = DAILY_TIER_REWARDS[def.tier] || { packs:0, money:0 };
   const parts = [];
-  if(packs) parts.push('+'+packs+' pack'+(packs>1?'s':''));
-  if(money) parts.push('+$'+money);
+  if(rew.packs) parts.push('+'+rew.packs+' pack'+(rew.packs>1?'s':''));
+  if(rew.money) parts.push('+$'+rew.money);
   return parts.join(' · ') || '—';
 }
 
-function renderQuestCard(def, opts){
-  opts = opts || {};
-  const locked = !!opts.locked;
-  const prog = questProgress(def);
-  const target = questTarget(def);
-  const done = !locked && questDone(def);
-  const claimed = questClaimed(def);
-  const pct = Math.min(100, Math.round((prog/Math.max(1,target))*100));
-  let cls = 'quest-card';
-  if(locked) cls += ' locked';
-  if(claimed) cls += ' claimed';
-  else if(done) cls += ' claimable';
-  let btn;
-  if(locked) btn = '<button class="btn btn-secondary" disabled style="padding:.4rem .75rem;font-size:.8rem">Locked</button>';
-  else if(claimed) btn = '<button class="btn btn-secondary" disabled style="padding:.4rem .75rem;font-size:.8rem">Claimed</button>';
-  else if(done) btn = '<button class="btn" style="padding:.4rem .75rem;font-size:.8rem" onclick="claimQuest(\''+def.id+'\')">Claim</button>';
-  else btn = '<button class="btn btn-secondary" disabled style="padding:.4rem .75rem;font-size:.8rem">In progress</button>';
-  return `<div class="${cls}">
-    <div class="quest-info">
-      <h4>${locked ? '???' : def.title}</h4>
-      <p>${locked ? 'Complete the previous quest to unlock' : def.desc}</p>
-      ${locked ? '' : `<div class="quest-progress"><div class="quest-progress-fill" style="width:${pct}%"></div></div>
-      <div class="quest-meta">${Math.min(prog,target)} / ${target}</div>`}
-    </div>
-    <div class="quest-reward">
-      <div class="rew">${locked ? '???' : rewardText(def)}</div>
-      ${btn}
-    </div>
-  </div>`;
-}
-
-let openQuestAccordions = { 'Base Set': true };
-
-function toggleQuestAccordion(setName){
-  openQuestAccordions[setName] = !openQuestAccordions[setName];
-  renderQuests();
-}
-
+// Updates the "Today's Quest" widget on Home with whichever tier is currently active.
 function renderQuests(){
-  ensureDailyState();
-  // Daily
-  const dEl = document.getElementById('daily-quest-list');
-  if(dEl){
-    const dailies = todaysDailyQuests().map(q => { q._daily = true; return q; });
-    dEl.innerHTML = dailies.map(q => renderQuestCard(q)).join('') || '<div class="empty-state">No daily goals</div>';
+  const defs = todaysDailyQuests();
+  const idx = defs.findIndex(q => !questClaimed(q));
+  const setText = (id, t) => { const el = document.getElementById(id); if(el) el.textContent = t; };
+  const claimBtn = document.getElementById('home-quest-claim-btn');
+  const icon = document.getElementById('home-quest-icon');
+  const fill = document.querySelector('.home-quest-bar i');
+  if(idx === -1){
+    setText('home-quest-title', 'All done for today!');
+    setText('home-quest-copy', 'New quests tomorrow.');
+    setText('home-quest-progress', '—');
+    setText('home-quest-reward', '');
+    if(icon) icon.textContent = '✅';
+    if(fill) fill.style.width = '100%';
+    if(claimBtn) claimBtn.style.display = 'none';
+  } else {
+    const def = defs[idx];
+    const target = questTarget(def);
+    const progress = Math.min(questProgress(def), target);
+    const done = questDone(def);
+    setText('home-quest-title', def.title);
+    setText('home-quest-copy', done ? 'Complete — claim your reward!' : def.desc);
+    setText('home-quest-progress', progress + ' / ' + target);
+    setText('home-quest-reward', 'Reward: ' + rewardText(def));
+    if(icon) icon.textContent = DAILY_TIER_ICON[def.tier] || '🎁';
+    if(fill) fill.style.width = (progress / Math.max(1,target) * 100) + '%';
+    if(claimBtn){
+      claimBtn.style.display = done ? '' : 'none';
+      claimBtn.onclick = () => claimQuest(def.id);
+    }
   }
-  // Set chains as accordions
-  const wrap = document.getElementById('set-quest-accordions');
-  if(wrap){
-    wrap.innerHTML = Object.keys(SET_QUEST_CHAINS).map(setName => {
-      const chain = SET_QUEST_CHAINS[setName];
-      const claimedCount = chain.filter(q => questClaimed(q)).length;
-      const isOpen = openQuestAccordions[setName] !== false && (openQuestAccordions[setName] || setName === 'Base Set');
-      if(openQuestAccordions[setName] === undefined && setName === 'Base Set') openQuestAccordions[setName] = true;
-      const open = !!openQuestAccordions[setName];
-      const cards = chain.map(q => {
-        const unlocked = isQuestUnlocked(q, chain);
-        // Only show unlocked + the next locked one
-        const idx = chain.findIndex(x => x.id === q.id);
-        const prevClaimed = idx === 0 || questClaimed(chain[idx-1]);
-        const show = prevClaimed || questClaimed(q);
-        // sequential: show claimed ones, the current unlocked, and one locked teaser
-        let visible = false;
-        if(questClaimed(q)) visible = true;
-        else if(unlocked) visible = true;
-        else if(idx > 0 && questClaimed(chain[idx-1]) === false && isQuestUnlocked(chain[idx-1], chain)){
-          // previous is current - show this as locked teaser only if previous is unlocked but not claimed? 
-          visible = false;
-        } else if(idx > 0 && !questClaimed(chain[idx-1]) && isQuestUnlocked(chain[idx-1], chain)){
-          visible = false;
-        }
-        return { q, unlocked, idx };
-      });
-      // Only the current active quest (saves space). Claimed ones stay hidden behind progress count.
-      let body = '';
-      if(claimedCount === chain.length){
-        body = '<div style="color:var(--muted);font-size:.85rem;padding:.35rem 0">All quests in this set claimed ✓</div>';
-      } else {
-        for(let i=0;i<chain.length;i++){
-          const q = chain[i];
-          if(questClaimed(q)) continue;
-          if(isQuestUnlocked(q, chain)){
-            body = renderQuestCard(q);
-            break;
-          }
-        }
-        if(!body) body = '<div style="color:var(--muted);font-size:.85rem">No active quest</div>';
-      }
-      return `<div class="quest-accordion ${open?'open':''}">
-        <button type="button" class="quest-acc-head" onclick="toggleQuestAccordion('${setName.replace(/'/g,"\\'")}')">
-          <span>
-            <div class="acc-title">${setName}</div>
-            <div class="acc-meta">${claimedCount} / ${chain.length} claimed</div>
-          </span>
-          <span class="acc-chev">▼</span>
-        </button>
-        <div class="quest-acc-body">${body}</div>
-      </div>`;
-    }).join('');
-  }
-  // Achievements
-  const aEl = document.getElementById('achievement-list');
-  if(aEl) aEl.innerHTML = ACHIEVEMENT_DEFS.map(q => renderQuestCard(q)).join('');
-  if(typeof updateQuestBadge === 'function') updateQuestBadge();
   if(typeof completeResearchJobs === 'function'){
     if(completeResearchJobs()){
       if(typeof renderCatalog === 'function') renderCatalog();
@@ -520,44 +363,6 @@ function renderQuests(){
         if(c && typeof renderZoomCopyUI === 'function') renderZoomCopyUI(c);
       }
     }
-  }
-}
-
-
-function allQuestDefs(){
-  const dailies = (typeof todaysDailyQuests==='function' ? todaysDailyQuests() : []).map(q => { q._daily = true; return q; });
-  const setQs = typeof SET_QUEST_CHAINS !== 'undefined'
-    ? Object.entries(SET_QUEST_CHAINS).flatMap(([set, chain]) => chain.map(q => ({...q, _chain: chain})))
-    : [];
-  const ach = typeof ACHIEVEMENT_DEFS !== 'undefined' ? ACHIEVEMENT_DEFS.slice() : [];
-  return [...dailies, ...setQs, ...ach];
-}
-
-function isQuestVisibleClaimable(def){
-  if(questClaimed(def)) return false;
-  if(!questDone(def)) return false;
-  if(def._chain && !isQuestUnlocked(def, def._chain)) return false;
-  return true;
-}
-
-function countClaimableQuests(){
-  try {
-    return allQuestDefs().filter(isQuestVisibleClaimable).length;
-  } catch(e){ return 0; }
-}
-
-function updateQuestBadge(){
-  const badge = document.getElementById('quest-nav-badge');
-  if(!badge) return;
-  const n = countClaimableQuests();
-  if(n > 0){
-    badge.textContent = n > 9 ? '9+' : String(n);
-    badge.classList.add('show', 'pulse');
-    badge.title = n + ' reward' + (n>1?'s':'') + ' ready to claim';
-  } else {
-    badge.classList.remove('show', 'pulse');
-    badge.textContent = '★';
-    badge.title = '';
   }
 }
 
@@ -583,7 +388,7 @@ function pumpQuestNotify(){
   const desc = document.getElementById('qc-desc');
   const rew = document.getElementById('qc-reward');
   const claimBtn = document.getElementById('qc-claim-btn');
-  if(title) title.textContent = (def._daily ? 'Daily Goal Complete!' : 'Quest Complete!');
+  if(title) title.textContent = 'Daily Quest Complete!';
   if(desc) desc.textContent = def.title + (def.desc ? ' — ' + def.desc : '');
   if(rew) rew.textContent = (typeof rewardText === 'function' ? rewardText(def) : 'Reward ready');
   if(claimBtn){
@@ -623,61 +428,60 @@ function ensureQuestNotified(){
 function checkNewlyCompletedQuests(){
   try {
     ensureQuestNotified();
-    const newly = [];
-    allQuestDefs().forEach(def => {
-      if(!isQuestVisibleClaimable(def)) return;
-      const key = def._daily ? (def.id + '@' + todayKey()) : def.id;
-      if(state.questNotified[key]) return;
-      state.questNotified[key] = def._daily ? todayKey() : true;
-      newly.push(def);
-    });
-    if(newly.length){
-      save();
-      newly.forEach(showQuestCompletePopup);
-    }
-    updateQuestBadge();
+    const defs = todaysDailyQuests();
+    const def = defs.find(q => !questClaimed(q));
+    if(!def || !questDone(def)) return;
+    const key = def.id + '@' + todayKey();
+    if(state.questNotified[key]) return;
+    state.questNotified[key] = todayKey();
+    save();
+    showQuestCompletePopup(def);
   } catch(e){ console.warn('quest notify', e); }
 }
 
-function finishOpening(){
-  opening.active=false;
-  hideHoverPreview();
-  lastPackCards = opening.cards.slice();
+// Shared stat/quest bookkeeping for a resolved pack's cards, used by both the
+// one-by-one Open Packs reveal (finishOpening) and the Mystery Box explode-reveal modal.
+function recordPackOpenedStats(cards, setName){
   state.stats.packsOpened = (state.stats.packsOpened||0) + 1;
   if(!state.stats.packsOpenedBySet) state.stats.packsOpenedBySet = {};
-  const openedSet = (opening.cards && opening.cards._packSet) || (opening.packSet) || selectedOpenSet || 'Base Set';
-  // pack set from last buildPack
-  const ps = window._lastPackSet || selectedOpenSet || 'Base Set';
+  const ps = setName || window._lastPackSet || selectedOpenSet || 'Base Set';
   state.stats.packsOpenedBySet[ps] = (state.stats.packsOpenedBySet[ps]||0) + 1;
-  const holos = opening.cards.filter(c=>c.rarity==='legendary').length;
+  const holos = cards.filter(c=>c.rarity==='legendary').length;
   if(holos) state.stats.holosPulled = (state.stats.holosPulled||0) + holos;
-  // Echo Pulls now triggers at reveal time (see fillPreviewCard in cosmetics.js),
-  // the instant a holo is actually shown to the player — not here on Done —
-  // so the timer can't be delayed by sitting on a revealed card.
-  // best single-card pull value
   try{
-    const maxV = Math.max(0, ...(opening.cards||[]).map(c => Number(c.price)||0));
+    const maxV = Math.max(0, ...(cards||[]).map(c => Number(c.price)||0));
     state.stats.bestPullValue = Math.max(Number(state.stats.bestPullValue)||0, maxV);
   }catch(_){}
   // week-scoped stats for the admin-generated Weekly Pull Stats Recap (reset when a recap is sent)
   try{
     state.stats.weekPacksOpened = (state.stats.weekPacksOpened||0) + 1;
-    const best = (opening.cards||[]).slice().sort((a,b) => (Number(b.price)||0) - (Number(a.price)||0))[0];
+    const best = (cards||[]).slice().sort((a,b) => (Number(b.price)||0) - (Number(a.price)||0))[0];
     if(best && (!state.stats.weekBestPull || (Number(best.price)||0) > (Number(state.stats.weekBestPull.price)||0))){
       state.stats.weekBestPull = { name: best.name, price: Number(best.price)||0, art: best.art||null, rarityLabel: best.rarityLabel||best.rarity||'' };
     }
   }catch(_){}
   if(typeof trackDaily === 'function'){
     trackDaily('packsOpened', 1);
+    trackDaily('packsBySet_'+ps, 1);
     if(holos) trackDaily('holos', holos);
-    // new cards in this pack
-    const news = opening.cards.filter(c => c.isNew).length;
+    const news = cards.filter(c => c.isNew).length;
     if(news) trackDaily('newCards', news);
   }
   // Guess the Pull Count — increment (and maybe end round on Chase)
   if(typeof gpcRecordOpen === 'function'){
-    try { gpcRecordOpen(opening.cards.slice()); } catch(e) { console.warn('[gpc]', e); }
+    try { gpcRecordOpen(cards.slice()); } catch(e) { console.warn('[gpc]', e); }
   }
+}
+
+function finishOpening(){
+  opening.active=false;
+  hideHoverPreview();
+  lastPackCards = opening.cards.slice();
+  const openedSet = (opening.cards && opening.cards._packSet) || (opening.packSet) || selectedOpenSet || 'Base Set';
+  recordPackOpenedStats(opening.cards, openedSet);
+  // Echo Pulls now triggers at reveal time (see fillPreviewCard in cosmetics.js),
+  // the instant a holo is actually shown to the player — not here on Done —
+  // so the timer can't be delayed by sitting on a revealed card.
   save();
   document.getElementById('reveal-stage').classList.remove('active');
   resetPackVisual();

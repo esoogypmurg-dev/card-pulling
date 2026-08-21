@@ -312,7 +312,6 @@ async function afterLogin(){
   setTimeout(maybeShowPromoOnLogin, 900);
   // Live Event invite channel (popup when admin invites you)
   if(typeof lwEnsureInviteChannel === 'function') lwEnsureInviteChannel();
-  if(typeof loadDailyGoalSettings === 'function') await loadDailyGoalSettings();
   if(typeof achLoadCatalogFromCloud === 'function') await achLoadCatalogFromCloud();
   if(typeof checkAppAnnouncement === 'function') await checkAppAnnouncement();
   if(typeof checkForceRefreshFlag === 'function') await checkForceRefreshFlag();

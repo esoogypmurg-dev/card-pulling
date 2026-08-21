@@ -69,7 +69,6 @@
     <button type="button" class="app-nav-btn" data-tab="trade" onclick="navGo('trade')"><span class="nav-ico">🤝</span> Trade</button>
     <button type="button" class="app-nav-btn" data-tab="leaderboard" onclick="navGo('leaderboard')"><span class="nav-ico">🏆</span> Leaderboard</button>
     <button type="button" class="app-nav-btn" data-tab="teams" onclick="navGo('teams')"><span class="nav-ico">👥</span> Teams</button>
-    <button type="button" class="app-nav-btn" data-tab="quests" onclick="navGo('quests')"><span class="nav-ico">⭐</span> Quests <span class="nav-quest-badge" id="quest-nav-badge">★</span></button>
     <button type="button" class="app-nav-btn" data-tab="achievements" onclick="navGo('achievements')"><span class="nav-ico">🏅</span> Achievements</button>
     <button type="button" class="app-nav-btn" data-tab="shop" id="nav-shop-btn" onclick="navGo('shop')"><span class="nav-ico">🛒</span> Shop</button>
     <button type="button" class="app-nav-btn" data-tab="players" onclick="navGo('players')"><span class="nav-ico">👥</span> Players</button>
@@ -778,32 +777,6 @@
     </section>
   </div>
 
-<div id="quests" class="panel page-shell">
-    <div class="ach-title-panel page-hero">
-      <div class="ach-title-row">
-        <div class="ach-title-main">
-          <div class="ach-eyebrow">Daily &amp; Campaign</div>
-          <h1>Quests</h1>
-          <p>Daily goals refresh every day. Set quests unlock step-by-step for packs and money.</p>
-        </div>
-        <div class="ach-summary">
-          <div class="ach-summary-card"><div class="ach-medal">☀</div><b id="q-sum-daily">—</b><span>Daily</span></div>
-          <div class="ach-summary-card"><div class="ach-medal">📜</div><b id="q-sum-set">—</b><span>Set quests</span></div>
-          <div class="ach-summary-card"><div class="ach-medal">🏅</div><b id="q-sum-ach">—</b><span>Achievements</span></div>
-        </div>
-      </div>
-    </div>
-    <section class="mkt-body page-body">
-      <div class="page-scroll">
-        <h3 class="quest-section-title">Daily Goals</h3>
-        <div class="quest-list" id="daily-quest-list"></div>
-        <h3 class="quest-section-title">Set Quests</h3>
-        <div id="set-quest-accordions"></div>
-        <h3 class="quest-section-title">Achievements</h3>
-        <div class="quest-list" id="achievement-list"></div>
-      </div>
-    </section>
-  </div>
 
   <div id="achievements" class="panel">
     <div class="ach-title-panel">
@@ -1148,11 +1121,6 @@
           <span class="admin-menu-ico">🛠</span>
           <span class="admin-menu-label">Dev Tools</span>
           <span class="admin-menu-sub">Pull &amp; grants</span>
-        </button>
-        <button type="button" class="admin-menu-btn" data-admin-sec="dailygoals" onclick="adminShowSection('dailygoals')">
-          <span class="admin-menu-ico">⭐</span>
-          <span class="admin-menu-label">Daily Goals</span>
-          <span class="admin-menu-sub">Create Home quests</span>
         </button>
         <button type="button" class="admin-menu-btn" data-admin-sec="liveevent" onclick="adminShowSection('liveevent')">
           <span class="admin-menu-ico">⚡</span>
@@ -1535,19 +1503,6 @@
     </div>
 
 
-    <!-- DAILY GOALS -->
-    <div class="admin-section" id="admin-sec-dailygoals">
-      <div class="trade-box" style="margin-bottom:1.2rem;border-color:rgba(255,203,5,.35)">
-        <h3 style="color:var(--gold)">⭐ Daily Goals</h3>
-        <p style="color:var(--muted);font-size:.82rem;margin:0 0 .85rem">Create up to three daily goals. They replace the rotating defaults and the first unfinished goal appears in Today&rsquo;s quest on Home.</p>
-        <div id="admin-daily-goals-list"></div>
-        <button class="btn btn-secondary" type="button" onclick="adminAddDailyGoal()">+ Add daily goal</button>
-        <button class="btn" type="button" onclick="adminSaveDailyGoals()" style="margin-left:.4rem">Save daily goals</button>
-        <button class="btn btn-secondary" type="button" onclick="adminUseDefaultDailyGoals()" style="margin-left:.4rem">Use rotating defaults</button>
-        <div class="lw-msg" id="admin-daily-goals-msg"></div>
-      </div>
-    </div>
-
     <!-- ACCOUNTS -->
     <div class="admin-section active" id="admin-sec-accounts">
       <div class="trade-box" style="margin-bottom:1.2rem">
@@ -1783,12 +1738,13 @@
       <div class="home-upcoming-list" id="home-upcoming-list" style="padding:.35rem .85rem .75rem"></div>
     </div>
     <div class="home-card home-side-card" id="home-quest-card">
-      <div class="home-card-head"><h2><span>★</span> Today&rsquo;s quest</h2><button class="home-link" onclick="navGo('quests')">View quests</button></div>
+      <div class="home-card-head"><h2><span>★</span> Today&rsquo;s quest</h2><button class="home-link" onclick="navGo('achievements')">View achievements</button></div>
       <div class="home-quest">
         <div class="home-quest-row"><div class="home-quest-icon" id="home-quest-icon">🎁</div><div><div class="home-quest-title" id="home-quest-title">Loading daily goal…</div><div class="home-quest-copy" id="home-quest-copy">Your daily goal will appear here.</div></div></div>
         <div class="home-quest-bar"><i></i></div>
         <div class="home-quest-foot"><span>Daily progress</span><strong id="home-quest-progress">0 / 5</strong></div>
         <div class="home-quest-reward" id="home-quest-reward"></div>
+        <button class="btn" id="home-quest-claim-btn" type="button" style="display:none;width:100%;margin-top:.6rem">Claim Reward</button>
       </div>
     </div>
     <div class="home-card home-side-card">
@@ -2088,6 +2044,29 @@
   </div>
 </div>
 
+<div id="mystery-box-reveal-modal" class="trade-modal" onclick="if(event.target===this)closeMysteryBoxRevealModal()">
+  <div class="trade-modal-inner" onclick="event.stopPropagation()" style="max-width:620px;width:100%;background:linear-gradient(180deg,#16161c 0%,#0e1016 42%,#0b0d12 100%);border:1px solid rgba(255,203,5,.08);border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.35);overflow:hidden;padding:0">
+
+    <div class="ach-title-panel" style="margin:0;padding:1.05rem 1.35rem;border-radius:0;border-bottom:1px solid rgba(255,203,5,.14);background:linear-gradient(105deg,#1c1914 0%,#141210 48%,#12141a 100%)">
+      <div class="ach-title-row">
+        <div class="ach-title-main">
+          <div class="ach-eyebrow">MYSTERY BOX FRIDAY</div>
+          <h1>🎁 Mystery Box</h1>
+          <p id="mb-reveal-hint">Tap the box to open it</p>
+        </div>
+      </div>
+    </div>
+
+    <div style="padding:1.35rem;text-align:center">
+      <img id="mb-reveal-box" class="mb-reveal-box" src="art/mystery-box-home.webp" alt="Mystery Box" onclick="mysteryBoxReveal()"/>
+      <div id="mb-reveal-grid" class="mb-reveal-grid"></div>
+      <div class="tm-actions" style="justify-content:center;margin-top:1.1rem">
+        <button class="btn" id="mb-reveal-done-btn" style="display:none" onclick="closeMysteryBoxRevealModal()">Awesome!</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Tuesday Trade-up modal - now matches Achievements card-shell exactly -->
 <div id="tradeup-modal" class="trade-modal" onclick="if(event.target===this)closeTradeUpModal()">
   <div class="trade-modal-inner tu-modal-shell" style="max-width:960px;width:100%;background:linear-gradient(180deg,#16161c 0%,#0e1016 42%,#0b0d12 100%);border:1px solid rgba(255,203,5,.08);border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.35);overflow:hidden;display:flex;flex-direction:column;max-height:min(90vh,660px);position:relative">
@@ -2342,8 +2321,7 @@
     <p id="qc-desc"></p>
     <div class="qc-reward" id="qc-reward"></div>
     <button class="btn" id="qc-claim-btn" onclick="claimFromQuestPopup()">Claim Reward</button>
-    <button class="btn btn-secondary" style="margin-top:.45rem" onclick="closeQuestCompleteModal(); navGo('quests');">View Quests</button>
-    <button class="btn btn-secondary" style="margin-top:.35rem" onclick="closeQuestCompleteModal()">Later</button>
+    <button class="btn btn-secondary" style="margin-top:.45rem" onclick="closeQuestCompleteModal()">Later</button>
   </div>
 </div>
 

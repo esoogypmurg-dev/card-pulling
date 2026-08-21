@@ -669,22 +669,103 @@ function buyMysteryBox(){
     if(state.money < cost){ showToast('Not enough money!'); return; }
     state.money = Math.round((state.money - cost) * 100) / 100;
   }
-  ensurePackQueue();
-  state.packQueue.push(MYSTERY_BOX_SET);
-  state.packs = state.packQueue.length;
   if(usedFree) lim.freeClaimed = true;
   else lim.paidCount = (lim.paidCount || 0) + 1;
   state.mysteryBoxLimits = lim;
+
+  // Resolve the box's 11 cards immediately (same moment normal packs commit cards to the
+  // collection) — the reveal modal below is just presentation on top of an already-settled pull.
+  const packCards = buildMysteryPack();
+  if(typeof consumeLuckBuffOnPackOpen === 'function') consumeLuckBuffOnPackOpen();
+  const cards = [];
+  for(const card of packCards){
+    const wasNew = colGet(state.collection, card) === 0;
+    colSet(state.collection, card, colGet(state.collection, card) + 1);
+    cards.push({...card, isNew: wasNew});
+  }
+  lastPackCards = cards.slice();
+  if(typeof recordPackOpenedStats === 'function') recordPackOpenedStats(cards, MYSTERY_BOX_SET);
   save(); updateUI();
-  if(typeof updateOpenSetStatus === 'function') updateOpenSetStatus();
   if(typeof updateMysteryBoxUI === 'function') updateMysteryBoxUI();
   if(cost > 0 && typeof gpcRecordSpend === 'function'){
     try { gpcRecordSpend(cost); } catch(e) { console.warn('[gpc]', e); }
   }
-  showToast(usedFree
-    ? 'Free Mystery Box claimed — open it under Open Packs'
-    : ('Mystery Box purchased for $' + cost.toFixed(2) + ' — open it under Open Packs'));
-  if(typeof selectOpenSet === 'function') selectOpenSet(MYSTERY_BOX_SET);
+  if(typeof renderCollection === 'function') renderCollection();
+  if(typeof renderSellList === 'function') renderSellList();
+  if(typeof renderBinder === 'function') renderBinder();
+  if(typeof renderQuests === 'function') renderQuests();
+  if(typeof renderSealedPackPreview === 'function') renderSealedPackPreview();
+  if(typeof checkNewlyCompletedQuests === 'function') checkNewlyCompletedQuests();
+  if(typeof checkNewlyCompletedAchievements === 'function') checkNewlyCompletedAchievements();
+  openMysteryBoxRevealModal(cards);
+}
+
+/* ===== Mystery Box explode-reveal modal ===== */
+let _mbRevealCards = [];
+let _mbRevealBusy = false;
+
+function openMysteryBoxRevealModal(cards){
+  _mbRevealCards = cards || [];
+  _mbRevealBusy = false;
+  const modal = document.getElementById('mystery-box-reveal-modal');
+  if(!modal) return;
+  const box = document.getElementById('mb-reveal-box');
+  const grid = document.getElementById('mb-reveal-grid');
+  const hint = document.getElementById('mb-reveal-hint');
+  const doneBtn = document.getElementById('mb-reveal-done-btn');
+  if(box){ box.classList.remove('exploding'); box.style.display = ''; }
+  if(grid) grid.innerHTML = '';
+  if(hint) hint.style.display = '';
+  if(doneBtn) doneBtn.style.display = 'none';
+  modal.classList.add('open');
+}
+
+function mysteryBoxReveal(){
+  if(_mbRevealBusy || !_mbRevealCards.length) return;
+  _mbRevealBusy = true;
+  const box = document.getElementById('mb-reveal-box');
+  const hint = document.getElementById('mb-reveal-hint');
+  if(hint) hint.style.display = 'none';
+  if(box) box.classList.add('exploding');
+  setTimeout(() => {
+    if(box) box.style.display = 'none';
+    renderMysteryBoxRevealGrid();
+    const doneBtn = document.getElementById('mb-reveal-done-btn');
+    if(doneBtn) doneBtn.style.display = '';
+  }, 550);
+}
+
+function renderMysteryBoxRevealGrid(){
+  const grid = document.getElementById('mb-reveal-grid');
+  if(!grid) return;
+  grid.innerHTML = '';
+  _mbRevealCards.forEach((card, i) => {
+    const el = document.createElement('div');
+    el.className = 'lp-card mb-reveal-card' + (card.isNew ? ' new-pull' : '');
+    el.style.borderColor = TYPE_COLORS[card.type1] || '#888';
+    el.style.animationDelay = (i * 70) + 'ms';
+    if(card.art){
+      el.innerHTML = '<img src="'+card.art+'" alt="'+card.name+'"/>';
+    } else {
+      el.textContent = card.emoji || '🃏';
+      el.style.display = 'flex';
+      el.style.alignItems = 'center';
+      el.style.justifyContent = 'center';
+      el.style.fontSize = '1.6rem';
+    }
+    el.onmouseenter = () => showHoverPreview(card);
+    el.onmouseleave = () => hideHoverPreview();
+    el.onclick = () => openZoom(card);
+    el.title = (card.cardNumber||'') + ' ' + card.name + (card.isNew ? ' · NEW' : '');
+    grid.appendChild(el);
+  });
+}
+
+function closeMysteryBoxRevealModal(){
+  const modal = document.getElementById('mystery-box-reveal-modal');
+  if(modal) modal.classList.remove('open');
+  _mbRevealCards = [];
+  _mbRevealBusy = false;
 }
 
 function mysteryCardPullWeight(card){
@@ -1320,7 +1401,7 @@ function devPullCard(){
 const TAB_TITLES = {
   profile: 'Profile',
   home:'Home', open:'Open Packs', collection:'Collection', binder:'Binders',
-  market:'Market', trade:'Trade', leaderboard:'Leaderboard', teams:'Teams', mail:'Mail', quests:'Quests',
+  market:'Market', trade:'Trade', leaderboard:'Leaderboard', teams:'Teams', mail:'Mail',
   shop:'Shop', players:'Players', admin:'Admin'
 , achievements: 'Achievements'};
 

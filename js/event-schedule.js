@@ -377,30 +377,7 @@ function updateHomeDashboard(){
   const fill = document.getElementById('home-progress-fill');
   if(fill) fill.style.width = pct + '%';
 
-  const dailyGoals = typeof todaysDailyQuests === 'function' ? todaysDailyQuests().map(q => ({...q, _daily:true})) : [];
-  // Home only surfaces goals that are still in progress.  A completed goal moves
-  // off the rail and remains claimable in the full Daily Goals page.
-  const homeGoal = dailyGoals.find(q => !questClaimed(q) && !questDone(q));
-  const homeQuestCard = document.getElementById('home-quest-card');
-  if(homeQuestCard) homeQuestCard.style.display = homeGoal ? '' : 'none';
-  if(homeGoal){
-    const target = questTarget(homeGoal);
-    const progress = Math.min(questProgress(homeGoal), target);
-    const complete = questDone(homeGoal);
-    setText('home-quest-title', homeGoal.title);
-    setText('home-quest-copy', complete ? 'Complete — claim your reward in Daily Goals.' : homeGoal.desc);
-    setText('home-quest-progress', progress + ' / ' + target);
-    const icon = document.getElementById('home-quest-icon');
-    if(icon) icon.textContent = homeGoal.icon || (DAILY_GOAL_TYPES[homeGoal.type] && DAILY_GOAL_TYPES[homeGoal.type].icon) || '🎁';
-    setText('home-quest-reward', 'Reward: ' + rewardText(homeGoal));
-    const questFill = document.querySelector('.home-quest-bar i');
-    if(questFill) questFill.style.width = (progress / Math.max(1,target) * 100) + '%';
-  } else {
-    setText('home-quest-title', 'No daily goal');
-    setText('home-quest-copy', 'Check back tomorrow for a new goal.');
-    setText('home-quest-progress', '—');
-    setText('home-quest-reward', '');
-  }
+  if(typeof renderQuests === 'function') renderQuests();
 
   const pullWrap = document.getElementById('home-recent-pulls');
   if(pullWrap){
@@ -494,7 +471,6 @@ function switchTab(tab){
   document.body.classList.toggle('market-active', tab === 'market');
   document.body.classList.toggle('collection-active', tab === 'collection');
   document.body.classList.toggle('catalog-active', tab === 'catalog');
-  document.body.classList.toggle('quests-active', tab === 'quests');
   document.body.classList.toggle('shop-active', tab === 'shop');
   document.body.classList.toggle('open-active', tab === 'open');
   document.body.classList.toggle('binder-active', tab === 'binder');
@@ -511,7 +487,6 @@ function switchTab(tab){
 
   if(tab==='trade'){ populateTradeSelects(); renderTradePicks(); }
   if(tab==='binder'){ renderBinder(); }
-  if(tab==='quests'){ renderQuests(); }
   if(tab==='achievements'){ if(typeof renderAchievements==='function') renderAchievements(); }
   if(tab==='leaderboard'){ renderLeaderboard(); }
   if(tab==='teams'){ renderTeams(); }

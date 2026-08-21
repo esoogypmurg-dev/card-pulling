@@ -667,7 +667,6 @@ function updateUI(){
   updateDailyUI();
   if(typeof updateDailyWheelUI === 'function') updateDailyWheelUI();
   if(typeof updateOpenSetStatus === 'function') updateOpenSetStatus();
-  if(typeof updateQuestBadge === 'function') updateQuestBadge();
   if(typeof completeResearchJobs === 'function'){
     if(completeResearchJobs()){
       if(typeof renderCatalog === 'function') renderCatalog();
