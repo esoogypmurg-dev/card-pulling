@@ -716,7 +716,7 @@ function pickMysteryWeighted(pool, used){
 function buildMysteryPack(){
   // Mixed-set pack: 1 rare-slot + 3 uncommon + 7 common across Base/Jungle/Fossil
   const sets = availableBoosterSets();
-  const inSets = (c) => !c.set || sets.includes(c.set);
+  const inSets = (c) => sets.includes(c.set);
   const used = new Set();
   const cards = [];
   const rarePool = CARDS.filter(c => inSets(c) && (c.rarity === 'epic' || c.rarity === 'legendary'));
