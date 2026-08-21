@@ -11,6 +11,60 @@ let achActiveCat = 'All';
 let achActiveSet = '';
 let achSelectedId = null;
 
+/* Custom icon art — sliced by hand from art/achievement icons.png into art/achievement_icons/.
+   Filenames carry no category info, so they're picked freely per-achievement via the admin
+   icon picker rather than auto-assigned. */
+const ACH_ICON_FILES = Array.from({length:159}, (_,i) => 'art/achievement_icons/achievments ('+(i+1)+').webp');
+
+function achIconIsImage(icon){
+  return typeof icon === 'string' && icon.indexOf('art/achievement_icons/') === 0;
+}
+function achIconHtml(icon){
+  const val = (icon || '').trim() || '🏅';
+  if(achIconIsImage(val)) return '<img class="ach-icon-img" src="'+encodeURI(val)+'" alt="" loading="lazy"/>';
+  return String(val).replace(/</g,'&lt;');
+}
+// Custom icon art already has its own framing baked in — drop the emoji-era badge
+// background/border for those so the icon blends into the panel instead of double-framing.
+function achIconBadgeClass(icon){
+  return achIconIsImage(icon) ? ' has-img' : '';
+}
+function achIconPreviewUpdate(){
+  const val = ((document.getElementById('ach-admin-icon')||{}).value||'').trim() || '🏅';
+  const prev = document.getElementById('ach-admin-icon-preview');
+  if(prev) prev.innerHTML = achIconHtml(val);
+}
+function achOpenIconPicker(){
+  const modal = document.getElementById('ach-icon-picker-modal');
+  const grid = document.getElementById('ach-icon-picker-grid');
+  if(!modal || !grid) return;
+  if(!grid.childElementCount){
+    grid.innerHTML = ACH_ICON_FILES.map(src =>
+      '<button type="button" class="ach-icon-pick" data-src="'+src.replace(/"/g,'&quot;')+'"><img src="'+encodeURI(src)+'" alt="" loading="lazy"/></button>'
+    ).join('');
+    grid.querySelectorAll('.ach-icon-pick').forEach(btn => {
+      btn.onclick = () => achPickIcon(btn.getAttribute('data-src'));
+    });
+  }
+  modal.classList.add('open');
+}
+function achCloseIconPicker(){
+  const modal = document.getElementById('ach-icon-picker-modal');
+  if(modal) modal.classList.remove('open');
+}
+function achPickIcon(src){
+  const input = document.getElementById('ach-admin-icon');
+  if(input) input.value = src;
+  achIconPreviewUpdate();
+  achCloseIconPicker();
+}
+function achClearIconToEmoji(){
+  const input = document.getElementById('ach-admin-icon');
+  if(input) input.value = '🏅';
+  achIconPreviewUpdate();
+  achCloseIconPicker();
+}
+
 function achLoadCatalog(){
   try{
     const raw = localStorage.getItem(ACH_STORAGE_KEY);
@@ -228,7 +282,7 @@ function renderAchievements(){
           ? '<div style="color:#ffe17b;font-size:1.4rem">✓</div>'
           : '<div class="ach-score">'+(Number(a.pts)||0)+'<small>PTS</small></div>';
         return '<article class="ach-item'+cls+'" data-id="'+a.id+'" role="button" tabindex="0">'+
-          '<div class="ach-badge">'+(locked?'🔒':(a.icon||'🏅'))+'</div>'+
+          '<div class="ach-badge'+(locked?'':achIconBadgeClass(a.icon))+'">'+(locked?'🔒':achIconHtml(a.icon))+'</div>'+
           '<div><h3>'+String(a.name||'').replace(/</g,'&lt;')+'</h3>'+
           '<p>'+String(a.desc||'').replace(/</g,'&lt;')+'</p>'+
           '<div class="ach-meter"><i style="width:'+achRatio(a)+'%"></i></div></div>'+
@@ -292,7 +346,7 @@ function renderAchDetail(){
   panel.innerHTML =
     '<div class="ach-eyebrow">'+(a.category||'General')+' Achievement</div>'+
     '<h2>'+String(a.name||'').replace(/</g,'&lt;')+'</h2>'+
-    '<div class="ach-hero-badge">'+(a.icon||'🏅')+'</div>'+
+    '<div class="ach-hero-badge'+achIconBadgeClass(a.icon)+'">'+achIconHtml(a.icon)+'</div>'+
     '<p>'+String(a.desc||'').replace(/</g,'&lt;')+'</p>'+
     stampHtml+
     '<div class="ach-rule"></div>'+
@@ -342,7 +396,7 @@ function renderAchRecent(){
       }catch(_){ when = achFormatClaimedAt(a.id); }
     }
     return '<button type="button" class="ach-recent-item" data-ach-id="'+a.id+'" title="View '+String(a.name||'').replace(/"/g,'&quot;')+'">'+
-      '<div class="mini">'+(a.icon||'🏅')+'</div>'+
+      '<div class="mini'+achIconBadgeClass(a.icon)+'">'+achIconHtml(a.icon)+'</div>'+
       String(a.name||'').replace(/</g,'&lt;')+'<br><span style="color:#827c76">'+(when||'Completed')+'</span></button>';
   }).join('');
   row.querySelectorAll('.ach-recent-item[data-ach-id]').forEach(el => {
@@ -428,6 +482,7 @@ function achAdminClearForm(){
   const msg = document.getElementById('ach-admin-msg'); if(msg) msg.textContent='';
   const btn = document.getElementById('ach-admin-savebtn'); if(btn) btn.textContent='Add achievement';
   const cancelBtn = document.getElementById('ach-admin-cancelbtn'); if(cancelBtn) cancelBtn.style.display='none';
+  achIconPreviewUpdate();
 }
 function achAdminEdit(id){
   achLoadCatalog();
@@ -449,6 +504,7 @@ function achAdminEdit(id){
   if(msg){ msg.textContent = 'Editing "'+(a.name||'')+'" — change fields above and Save.'; msg.style.color='#7dd3fc'; }
   const form = document.getElementById('ach-admin-name');
   if(form && form.scrollIntoView) form.scrollIntoView({behavior:'smooth', block:'center'});
+  achIconPreviewUpdate();
 }
 function achAdminReadForm(){
   const name = ((document.getElementById('ach-admin-name')||{}).value||'').trim();
@@ -547,7 +603,7 @@ function achAdminRender(){
   });
   list.innerHTML = sorted.map(a =>
     '<div style="display:flex;gap:.65rem;align-items:flex-start;justify-content:space-between;padding:.6rem .7rem;border-radius:10px;border:1px solid #2a314d;background:#0f1320">'+
-    '<div><div style="font-weight:700">'+(a.icon||'🏅')+' '+String(a.name||'').replace(/</g,'&lt;')+
+    '<div><div style="font-weight:700">'+achIconHtml(a.icon)+' '+String(a.name||'').replace(/</g,'&lt;')+
     ' <span style="color:var(--muted);font-weight:600;font-size:.78rem">· '+(a.category||'')+'</span></div>'+
     '<div style="font-size:.78rem;color:var(--muted);margin-top:.2rem">'+String(a.goalType)+' ≥ '+a.target+
     (a.setFilter?(' · set: '+a.setFilter):'')+
@@ -841,7 +897,7 @@ function pumpAchNotify(){
   const title = document.getElementById('ac-title');
   const desc = document.getElementById('ac-desc');
   const rew = document.getElementById('ac-reward');
-  if(icon) icon.textContent = a.icon || '🏆';
+  if(icon) icon.innerHTML = achIconHtml(a.icon || '🏆');
   if(title) title.textContent = a.name || 'Achievement complete!';
   if(desc) desc.textContent = a.desc || '';
   const bits = [];

@@ -75,8 +75,8 @@
     <button type="button" class="app-nav-btn" data-tab="admin" id="nav-admin" style="display:none" onclick="navGo('admin')"><span class="nav-ico">⚙️</span> Admin</button>
   </nav>
   <div class="app-sidebar-foot">
-    <button class="btn btn-daily" id="daily-btn-side" onclick="claimDailyPack()" style="width:100%;padding:.55rem .6rem;font-size:.82rem">🎁 Daily Free Pack</button>
-    <div class="daily-note" id="daily-note-side" style="margin-top:.35rem;font-size:.72rem;color:var(--muted);text-align:center">One free pack every day</div>
+    <button class="btn btn-daily" id="daily-btn-side" disabled onclick="claimDailyPack()" style="width:100%;padding:.55rem .6rem;font-size:.82rem">🎁 Daily Free Pack</button>
+    <div class="daily-note" id="daily-note-side" style="margin-top:.35rem;font-size:.72rem;color:var(--muted);text-align:center">Loading…</div>
     <button type="button" class="btn-logout" id="btn-logout-side" onclick="doLogout()" style="width:100%;margin-top:.55rem;padding:.45rem .6rem;font-size:.8rem;border-radius:8px">Log out</button>
   </div>
 </aside>
@@ -1340,8 +1340,12 @@
             <input type="text" id="ach-admin-name" maxlength="60" placeholder="Baby Steps" style="width:100%;padding:.45rem .55rem;border-radius:8px;border:1px solid #2a314d;background:#0f1320;color:var(--text)">
           </div>
           <div>
-            <label style="display:block;font-size:.75rem;color:var(--muted);margin-bottom:.2rem">Icon (emoji)</label>
-            <input type="text" id="ach-admin-icon" maxlength="8" placeholder="📦" style="width:100%;padding:.45rem .55rem;border-radius:8px;border:1px solid #2a314d;background:#0f1320;color:var(--text)">
+            <label style="display:block;font-size:.75rem;color:var(--muted);margin-bottom:.2rem">Icon</label>
+            <div style="display:flex;gap:.4rem;align-items:center">
+              <div id="ach-admin-icon-preview" style="width:38px;height:38px;flex:0 0 38px;border-radius:7px;border:1px solid #2a314d;background:#0f1320;display:grid;place-items:center;font-size:1.3rem;overflow:hidden">🏅</div>
+              <input type="text" id="ach-admin-icon" maxlength="120" placeholder="📦" oninput="achIconPreviewUpdate()" style="flex:1;min-width:0;padding:.45rem .55rem;border-radius:8px;border:1px solid #2a314d;background:#0f1320;color:var(--text)">
+              <button type="button" class="btn btn-secondary" style="padding:.4rem .55rem;font-size:.72rem;white-space:nowrap" onclick="achOpenIconPicker()">Choose…</button>
+            </div>
           </div>
           <div>
             <label style="display:block;font-size:.75rem;color:var(--muted);margin-bottom:.2rem">Category</label>
@@ -2063,6 +2067,18 @@
       <div class="tm-actions" style="justify-content:center;margin-top:1.1rem">
         <button class="btn" id="mb-reveal-done-btn" style="display:none" onclick="closeMysteryBoxRevealModal()">Awesome!</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<div id="ach-icon-picker-modal" class="trade-modal" onclick="if(event.target===this)achCloseIconPicker()">
+  <div class="trade-modal-inner" onclick="event.stopPropagation()" style="max-width:640px;width:100%;max-height:82vh;display:flex;flex-direction:column">
+    <h3 style="color:var(--gold);margin:0 0 .15rem">Choose an achievement icon</h3>
+    <p class="tm-hint" style="margin-bottom:.75rem">159 icons — click one to use it</p>
+    <div id="ach-icon-picker-grid" style="overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(56px,1fr));gap:.4rem;padding:.15rem"></div>
+    <div class="tm-actions" style="justify-content:center;margin-top:.85rem">
+      <button class="btn btn-secondary" type="button" onclick="achClearIconToEmoji()">Use emoji instead</button>
+      <button class="btn btn-secondary" type="button" onclick="achCloseIconPicker()">Cancel</button>
     </div>
   </div>
 </div>

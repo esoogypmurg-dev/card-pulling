@@ -70,19 +70,38 @@ async function loadSetsAndCards() {
     if (sErr) throw sErr;
     SETS = sets || [];
 
-    // Supabase caps a single request at 1000 rows, so page through the full catalog.
-    const rows = [];
+    // Supabase caps a single request at 1000 rows. Fetch the total count once, then
+    // fire every page in parallel instead of awaiting them one at a time — a ~20-page
+    // catalog was taking 20 sequential round-trips (the dominant cause of load lag).
+    const CARD_COLUMNS = 'id,key,set_code,num,card_number,name,rarity,rarity_label,type1,type2,hp,art_path,price,emoji,attack,damage,attacks,battle_eligible';
     const PAGE = 1000;
-    for (let from = 0; ; from += PAGE) {
-      const { data: page, error: cErr } = await sb
-        .from('cards')
-        .select('id,key,set_code,num,card_number,name,rarity,rarity_label,type1,type2,hp,art_path,price,emoji,attack,damage,attacks,battle_eligible')
-        .order('id', { ascending: true })
-        .range(from, from + PAGE - 1);
-      if (cErr) throw cErr;
-      if (!page || !page.length) break;
-      rows.push(...page);
-      if (page.length < PAGE) break;
+    const fetchPage = (from) => sb
+      .from('cards')
+      .select(CARD_COLUMNS)
+      .order('id', { ascending: true })
+      .range(from, from + PAGE - 1);
+
+    let rows;
+    const { count, error: countErr } = await sb.from('cards').select('id', { count: 'exact', head: true });
+    if (!countErr && typeof count === 'number') {
+      const pageStarts = [];
+      for (let from = 0; from < count; from += PAGE) pageStarts.push(from);
+      const pages = await Promise.all(pageStarts.map(fetchPage));
+      rows = [];
+      for (const { data: page, error: cErr } of pages) {
+        if (cErr) throw cErr;
+        if (page) rows.push(...page);
+      }
+    } else {
+      // Fallback: sequential paging if the count query itself failed.
+      rows = [];
+      for (let from = 0; ; from += PAGE) {
+        const { data: page, error: cErr } = await fetchPage(from);
+        if (cErr) throw cErr;
+        if (!page || !page.length) break;
+        rows.push(...page);
+        if (page.length < PAGE) break;
+      }
     }
     const normalized = rows.map(normalizeCardRow);
     indexCards(normalized);

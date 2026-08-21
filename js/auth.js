@@ -252,6 +252,12 @@ async function tryRestoreSession(){
 async function afterLogin(){
   document.getElementById('login-screen').classList.add('hidden');
 
+  // Daily-claim state is already loaded (loadProfileForAuthUser ran before this).
+  // Sync the claim button immediately — it doesn't depend on the card catalog,
+  // and leaving it in its default-enabled markup state during the slower
+  // Phase 1/2 loads below let a click through before we'd disabled it.
+  if(typeof updateDailyUI === 'function') updateDailyUI();
+
   // Phase 1: load card catalog from Supabase before any UI that needs CARDS
   try {
     if (sb) {
