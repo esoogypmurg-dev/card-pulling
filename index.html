@@ -950,6 +950,17 @@
 
   <!-- ========== ADMIN PANEL ========== -->
   
+  <div id="rocket-reward-modal" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.75);align-items:center;justify-content:center" onclick="if(event.target===this)closeRocketRewardModal()">
+    <div style="background:linear-gradient(180deg,#1a0f0f,#0c0808);border:1px solid #5c1f1f;border-radius:16px;padding:1.5rem;max-width:340px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.5)">
+      <div style="font-size:.75rem;letter-spacing:.08em;color:#ff9d8a;font-weight:800;text-transform:uppercase;margin-bottom:.3rem">Victory!</div>
+      <div id="rocket-reward-art" style="margin:0 auto .8rem;max-width:200px"></div>
+      <div id="rocket-reward-name" style="font-size:1.15rem;font-weight:800;margin-bottom:.15rem"></div>
+      <div id="rocket-reward-meta" style="font-size:.8rem;color:var(--muted);margin-bottom:.2rem"></div>
+      <div id="rocket-reward-bonus" style="font-size:.8rem;color:#ffd166;margin-bottom:.9rem"></div>
+      <button type="button" class="btn btn-danger" style="width:100%" onclick="closeRocketRewardModal()">Nice!</button>
+    </div>
+  </div>
+
   <div id="rocket" class="panel">
     <div style="display:flex;align-items:center;gap:.7rem;background:linear-gradient(135deg,#2a0f0f,#160a0a);border:1px solid #5c1f1f;border-radius:14px;padding:1rem;margin-bottom:1rem">
       <div style="font-size:1.8rem">🚀</div>
@@ -1002,6 +1013,20 @@
     <div id="rocket-log" style="min-height:2.2rem;text-align:center;font-size:.85rem;color:var(--muted);margin-bottom:.6rem"></div>
 
     <div id="rocket-attack-row" style="display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap;margin-bottom:.9rem"></div>
+
+    <div id="rocket-timing-wrap" style="display:none;margin:0 auto .9rem;max-width:420px">
+      <div id="rocket-timing-label" style="text-align:center;font-size:.8rem;font-weight:700;color:var(--gold);margin-bottom:.3rem">Tap STRIKE in the glowing zone!</div>
+      <div id="rocket-timing-track" style="position:relative;height:20px;border-radius:10px;background:#1a1f2e;border:1px solid #2a314d;overflow:hidden">
+        <div id="rocket-timing-zone" style="position:absolute;top:0;bottom:0;background:rgba(74,222,128,.35);border-left:2px solid #4ade80;border-right:2px solid #4ade80"></div>
+        <div id="rocket-timing-marker" style="position:absolute;top:-2px;bottom:-2px;width:4px;background:#fff;box-shadow:0 0 8px #fff"></div>
+      </div>
+      <button type="button" class="btn btn-danger" id="rocket-timing-btn" style="display:block;margin:.5rem auto 0" onclick="rocketTimingTap()">STRIKE!</button>
+    </div>
+
+    <div id="rocket-dodge-wrap" style="display:none;margin:0 auto .9rem;max-width:420px;text-align:center">
+      <div style="font-size:.85rem;font-weight:800;color:#ff6b5c;margin-bottom:.4rem" id="rocket-dodge-label">Incoming attack! Tap to dodge!</div>
+      <button type="button" class="btn btn-danger" id="rocket-dodge-btn" style="padding:.6rem 1.6rem" onclick="rocketDodgeTap()">DODGE!</button>
+    </div>
 
     <div style="display:flex;gap:.6rem;justify-content:center;margin-bottom:1.2rem">
       <button type="button" class="btn btn-danger" id="rocket-battle-btn" onclick="rocketStartBattle()" disabled>⚔️ Battle Team Rocket</button>

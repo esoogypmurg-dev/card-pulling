@@ -93,10 +93,15 @@ function rocketPowerScore(hp, attacks){
   return (hp || 50) + avgDmg * 3;
 }
 
+/** Owned cards eligible to wager against the CURRENT persona — same rarity tier as the
+ *  opponent, so a Grunt fight can't be stomped with a legendary and Giovanni can't be
+ *  cheaply risked with a common. */
 function rocketOwnedBattleCards(){
   if(!Array.isArray(CARDS)) return [];
+  const persona = rocketCurrentPersona();
+  const rarities = new Set((ROCKET_PERSONAS[persona] || ROCKET_PERSONAS.grunt).rarities);
   return CARDS.filter(c => c.battleEligible !== false && c.attacks && c.attacks.length &&
-    colGet(state.collection, c.key || c.id) > 0);
+    rarities.has(c.rarity) && colGet(state.collection, c.key || c.id) > 0);
 }
 
 function renderRocketScreen(){
@@ -123,7 +128,10 @@ function rocketRenderWagerList(){
   const owned = rocketOwnedBattleCards();
   wrap.innerHTML = '';
   if(!owned.length){
-    wrap.innerHTML = '<div style="color:var(--muted);font-size:.85rem;padding:.5rem">No battle-eligible cards in your collection yet — pull some Pokémon with real attacks first.</div>';
+    const persona = rocketCurrentPersona();
+    const label = (ROCKET_PERSONAS[persona] || ROCKET_PERSONAS.grunt).label;
+    const rarityWord = persona === 'grunt' ? 'a common or uncommon' : (persona === 'giovanni' ? 'a legendary' : 'an epic');
+    wrap.innerHTML = '<div style="color:var(--muted);font-size:.85rem;padding:.5rem">You need ' + rarityWord + ' card with real attacks to challenge ' + label + ' — check your collection.</div>';
     return;
   }
   owned.forEach(c => {
@@ -249,6 +257,9 @@ function rocketStartBattle(){
   });
 }
 
+/* ---- Attack timing minigame: tap STRIKE while the marker is in the glowing zone ---- */
+let rocketTiming = { active:false, atkIdx:null, pos:0, dir:1, zoneStart:0, zoneEnd:0, tickId:null, timeoutId:null };
+
 function rocketPlayerAttack(idx){
   const card = resolveCard(rb.wagerKey);
   if(!card || !rb.active) return;
@@ -256,12 +267,65 @@ function rocketPlayerAttack(idx){
   if(!atk) return;
 
   document.querySelectorAll('#rocket-attack-row .btn').forEach(b => b.disabled = true);
+  rocketStartTiming(idx);
+}
+
+function rocketStartTiming(atkIdx){
+  const wrap = document.getElementById('rocket-timing-wrap');
+  const zoneEl = document.getElementById('rocket-timing-zone');
+  const label = document.getElementById('rocket-timing-label');
+  if(!wrap) { rocketResolvePlayerAttack(atkIdx, 1); return; }
+
+  const zoneW = 14 + Math.random() * 6; // 14-20% wide
+  const zoneStart = Math.random() * (100 - zoneW);
+  rocketTiming = { active:true, atkIdx, pos:0, dir:1, zoneStart, zoneEnd: zoneStart+zoneW, tickId:null, timeoutId:null };
+
+  if(zoneEl){ zoneEl.style.left = zoneStart + '%'; zoneEl.style.width = zoneW + '%'; }
+  if(label) label.textContent = 'Tap STRIKE in the glowing zone!';
+  wrap.style.display = 'block';
+
+  const speed = 2.4; // % per tick
+  rocketTiming.tickId = setInterval(() => {
+    if(!rocketTiming.active) return;
+    rocketTiming.pos += speed * rocketTiming.dir;
+    if(rocketTiming.pos >= 100){ rocketTiming.pos = 100; rocketTiming.dir = -1; }
+    if(rocketTiming.pos <= 0){ rocketTiming.pos = 0; rocketTiming.dir = 1; }
+    const marker = document.getElementById('rocket-timing-marker');
+    if(marker) marker.style.left = rocketTiming.pos + '%';
+  }, 16);
+
+  // auto-resolve as a miss if they never tap
+  rocketTiming.timeoutId = setTimeout(() => rocketTimingTap(true), 3200);
+}
+
+function rocketTimingTap(timedOut){
+  if(!rocketTiming.active) return;
+  rocketTiming.active = false;
+  clearInterval(rocketTiming.tickId);
+  clearTimeout(rocketTiming.timeoutId);
+
+  const wrap = document.getElementById('rocket-timing-wrap');
+  if(wrap) wrap.style.display = 'none';
+
+  let mult = 0.7, hitLabel = 'Miss!';
+  if(!timedOut){
+    const p = rocketTiming.pos;
+    if(p >= rocketTiming.zoneStart && p <= rocketTiming.zoneEnd){ mult = 1.5; hitLabel = 'CRITICAL STRIKE!'; }
+    else if(p >= rocketTiming.zoneStart - 8 && p <= rocketTiming.zoneEnd + 8){ mult = 1.05; hitLabel = 'Solid hit'; }
+  }
+  rocketResolvePlayerAttack(rocketTiming.atkIdx, mult, hitLabel);
+}
+
+function rocketResolvePlayerAttack(idx, mult, hitLabel){
+  const card = resolveCard(rb.wagerKey);
+  const atk = card && card.attacks[idx];
+  if(!card || !atk){ rocketOpponentTurn(); return; }
 
   const variance = 0.8 + Math.random() * 0.4; // 80%-120%
-  const dmg = Math.round((Number(atk.damage) || 0) * variance);
+  const dmg = Math.round((Number(atk.damage) || 0) * variance * mult);
   rb.oppHp = Math.max(0, rb.oppHp - dmg);
   rocketSetHpDisplay('opp', rb.oppHp, rb.oppMaxHp);
-  rocketLog(card.name + ' used ' + atk.name + ' for ' + dmg + ' damage!');
+  rocketLog((hitLabel ? hitLabel + ' — ' : '') + card.name + ' used ' + atk.name + ' for ' + dmg + ' damage!');
 
   setTimeout(() => {
     if(rb.oppHp <= 0){ rocketFinishBattle(true); return; }
@@ -269,19 +333,38 @@ function rocketPlayerAttack(idx){
   }, 900);
 }
 
+/* ---- Dodge minigame: tap DODGE right after the opponent winds up ---- */
 function rocketOpponentTurn(){
   const attacks = rb.opponent.attacks || [];
   if(!attacks.length){ rocketFinishBattle(true); return; }
-  // weighted toward higher-damage attack, but not exclusively
   const atk = Math.random() < 0.65
     ? attacks.slice().sort((a,b) => (b.damage||0)-(a.damage||0))[0]
     : attacks[Math.floor(Math.random()*attacks.length)];
 
+  rocketLog(rb.opponent.name + ' is winding up ' + atk.name + '...');
+  const wrap = document.getElementById('rocket-dodge-wrap');
+  if(!wrap){ rocketResolveOpponentAttack(atk, false); return; }
+  wrap.style.display = 'block';
+  let dodged = false;
+  const dodgeBtn = document.getElementById('rocket-dodge-btn');
+  const handler = () => { dodged = true; };
+  if(dodgeBtn) dodgeBtn.addEventListener('click', handler, { once:true });
+  setTimeout(() => {
+    wrap.style.display = 'none';
+    if(dodgeBtn) dodgeBtn.removeEventListener('click', handler);
+    rocketResolveOpponentAttack(atk, dodged);
+  }, 900 + Math.random()*300);
+}
+
+function rocketDodgeTap(){ /* handled via one-time listener in rocketOpponentTurn */ }
+
+function rocketResolveOpponentAttack(atk, dodged){
   const variance = 0.8 + Math.random() * 0.4;
-  const dmg = Math.round((Number(atk.damage) || 0) * variance);
+  let dmg = Math.round((Number(atk.damage) || 0) * variance);
+  if(dodged) dmg = Math.round(dmg * 0.3);
   rb.playerHp = Math.max(0, rb.playerHp - dmg);
   rocketSetHpDisplay('player', rb.playerHp, rb.playerMaxHp);
-  rocketLog(rb.opponent.name + ' used ' + atk.name + ' for ' + dmg + ' damage!');
+  rocketLog((dodged ? 'Nice dodge! ' : '') + rb.opponent.name + ' used ' + atk.name + ' for ' + dmg + ' damage!');
 
   setTimeout(() => {
     if(rb.playerHp <= 0){ rocketFinishBattle(false); return; }
@@ -289,8 +372,34 @@ function rocketOpponentTurn(){
   }, 900);
 }
 
+function rocketShowRewardModal(card, bonusCard, wasGiovanni){
+  const modal = document.getElementById('rocket-reward-modal');
+  if(!modal || !card) return;
+  const art = document.getElementById('rocket-reward-art');
+  const name = document.getElementById('rocket-reward-name');
+  const meta = document.getElementById('rocket-reward-meta');
+  const bonus = document.getElementById('rocket-reward-bonus');
+  if(art) art.innerHTML = card.art ? `<img src="${card.art}" style="width:100%;border-radius:10px" onerror="this.style.display='none'">` : '<div style="font-size:3rem">🃏</div>';
+  if(name) name.textContent = card.name;
+  if(meta) meta.textContent = (card.rarity||'') + (wasGiovanni ? ' · Giovanni\'s card!' : '');
+  if(bonus) bonus.textContent = bonusCard ? ('+ Bonus drop: ' + bonusCard.name) : '';
+  modal.style.display = 'flex';
+}
+
+function closeRocketRewardModal(){
+  const modal = document.getElementById('rocket-reward-modal');
+  if(modal) modal.style.display = 'none';
+}
+
 async function rocketFinishBattle(won){
   rb.active = false;
+  clearInterval(rocketTiming.tickId);
+  clearTimeout(rocketTiming.timeoutId);
+  rocketTiming.active = false;
+  const timingWrap = document.getElementById('rocket-timing-wrap');
+  const dodgeWrap = document.getElementById('rocket-dodge-wrap');
+  if(timingWrap) timingWrap.style.display = 'none';
+  if(dodgeWrap) dodgeWrap.style.display = 'none';
   const card = resolveCard(rb.wagerKey);
   const opp = rb.opponent;
 
@@ -306,13 +415,13 @@ async function rocketFinishBattle(won){
     }
 
     // bonus roll: small chance at a Trainer/Energy Team Rocket card too
-    let bonusMsg = '';
+    let bonusMsg = '', bonusCard = null;
     if(Math.random() < 0.2){
       const bonusPool = ROCKET_CARDS.filter(r => r.cardType !== 'pokemon');
       if(bonusPool.length){
-        const bonus = bonusPool[Math.floor(Math.random()*bonusPool.length)];
-        colSet(state.collection, bonus.key, colGet(state.collection, bonus.key) + 1);
-        bonusMsg = ' Bonus drop: ' + bonus.name + '!';
+        bonusCard = bonusPool[Math.floor(Math.random()*bonusPool.length)];
+        colSet(state.collection, bonusCard.key, colGet(state.collection, bonusCard.key) + 1);
+        bonusMsg = ' Bonus drop: ' + bonusCard.name + '!';
       }
     }
 
@@ -321,7 +430,7 @@ async function rocketFinishBattle(won){
 
     rocketLog('You won! ' + opp.name + ' joins your collection.' + bonusMsg +
       (wasGiovanni ? ' Giovanni is defeated — the ladder resets, go again!' : ''));
-    showToast(wasGiovanni ? 'Giovanni defeated! Ladder reset — run it again.' : 'Victory! Won ' + opp.name + (bonusMsg ? ' + bonus card' : ''));
+    rocketShowRewardModal(opp, bonusCard, wasGiovanni);
   }else{
     state.rocketStats.losses = (state.rocketStats.losses||0) + 1;
     state.rocketStats.streak = 0;

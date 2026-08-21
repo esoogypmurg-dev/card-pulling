@@ -480,6 +480,10 @@ function placeHomeRailForViewport(){
 function switchTab(tab){
   if(opening.active && tab !== 'open') return;
   if(!tab || !document.getElementById(tab)) return;
+  if(tab === 'rocket' && typeof rocketIsEventArmed === 'function' && !rocketIsEventArmed()){
+    if(typeof showToast === 'function') showToast('Team Rocket hasn\'t attacked yet — check back when the event is live.');
+    return;
+  }
 
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.app-nav-btn').forEach(b=>b.classList.remove('active'));

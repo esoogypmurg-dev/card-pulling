@@ -3803,3 +3803,8 @@ body.echo-active .app-topbar{box-shadow:0 1px 0 rgba(74,222,128,.25)}
   border:2px solid rgba(255,255,255,.9)!important;box-shadow:0 2px 8px rgba(0,0,0,.55)!important;
 }
 .tr-zone .live-card-pick .live-remove:hover{background:#ef4444!important;transform:scale(1.08)}
+
+/* Team Rocket battle timing minigame */
+@keyframes rocketDodgePulse{0%,100%{transform:scale(1);box-shadow:0 0 0 rgba(239,68,68,.6)}50%{transform:scale(1.06);box-shadow:0 0 22px rgba(239,68,68,.6)}}
+#rocket-dodge-btn{animation:rocketDodgePulse .5s ease-in-out infinite}
+#rocket-timing-marker{transition:left .015s linear}
