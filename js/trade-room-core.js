@@ -1022,8 +1022,10 @@ function renderCatalog(){
   const content = document.getElementById('catalog-content');
   if(!content) return;
   try{
-    const total = (CARDS||[]).length;
-    const unlocked = (CARDS||[]).filter(c => isPriceUnlocked(c.id)).length;
+    const releasedSetCodes = (typeof SETS !== 'undefined' && SETS.length) ? new Set(SETS.map(s => s.code)) : null;
+    const released = releasedSetCodes ? (CARDS||[]).filter(c => releasedSetCodes.has(c.setCode)) : (CARDS||[]);
+    const total = released.length;
+    const unlocked = released.filter(c => isPriceUnlocked(c.id)).length;
     const set = (id,t)=>{ const el=document.getElementById(id); if(el) el.textContent=t; };
     set('cat-sum-total', String(total));
     set('cat-sum-unlocked', String(unlocked));

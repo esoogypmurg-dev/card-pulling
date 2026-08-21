@@ -349,7 +349,7 @@ function refreshUserBadge(){
 
   badge.innerHTML =
     `<div class="login-user-badge">`+
-      `<span class="badge-identity${frameClass}" role="button" tabindex="0" title="Open your profile" onclick="navGo('profile')">`+
+      `<span class="badge-identity${frameClass}" role="button" tabindex="0" title="Open your profile" onclick="openOwnProfile()">`+
         avatarHtml+
         `<span class="badge-label">Playing as</span> `+
         `<strong${nameStyle}>${currentUser.display_name}</strong>`+
@@ -361,6 +361,12 @@ function refreshUserBadge(){
 
 let ppTab = 'overview';
 let viewingProfilePlayer = null;
+
+function openOwnProfile(){
+  viewingProfilePlayer = null;
+  if(typeof viewingPlayer !== 'undefined') viewingPlayer = null;
+  navGo('profile');
+}
 
 function renderViewedPlayerProfile(){
   const p = viewingProfilePlayer;

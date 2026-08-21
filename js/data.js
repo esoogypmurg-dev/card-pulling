@@ -70,13 +70,21 @@ async function loadSetsAndCards() {
     if (sErr) throw sErr;
     SETS = sets || [];
 
-    // For now load all cards (only ~200). Later: load by set on demand.
-    const { data: rows, error: cErr } = await sb
-      .from('cards')
-      .select('id,key,set_code,num,card_number,name,rarity,rarity_label,type1,type2,hp,art_path,price,emoji,attack,damage,attacks,battle_eligible')
-      .order('id', { ascending: true });
-    if (cErr) throw cErr;
-    const normalized = (rows || []).map(normalizeCardRow);
+    // Supabase caps a single request at 1000 rows, so page through the full catalog.
+    const rows = [];
+    const PAGE = 1000;
+    for (let from = 0; ; from += PAGE) {
+      const { data: page, error: cErr } = await sb
+        .from('cards')
+        .select('id,key,set_code,num,card_number,name,rarity,rarity_label,type1,type2,hp,art_path,price,emoji,attack,damage,attacks,battle_eligible')
+        .order('id', { ascending: true })
+        .range(from, from + PAGE - 1);
+      if (cErr) throw cErr;
+      if (!page || !page.length) break;
+      rows.push(...page);
+      if (page.length < PAGE) break;
+    }
+    const normalized = rows.map(normalizeCardRow);
     indexCards(normalized);
     console.log('[cards] loaded', CARDS.length, 'cards across', SETS.length, 'sets');
     return { sets: SETS, cards: CARDS };

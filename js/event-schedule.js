@@ -491,6 +491,7 @@ function switchTab(tab){
   document.body.classList.toggle('quests-active', tab === 'quests');
   document.body.classList.toggle('shop-active', tab === 'shop');
   document.body.classList.toggle('open-active', tab === 'open');
+  document.body.classList.toggle('binder-active', tab === 'binder');
   document.body.classList.toggle('admin-active', tab === 'admin');
   placeHomeRailForViewport();
 

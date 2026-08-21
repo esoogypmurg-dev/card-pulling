@@ -43,7 +43,7 @@
   </div>
 </div>
 <aside class="app-sidebar" id="app-sidebar">
-  <div class="app-sidebar-brand" id="sidebar-brand" onclick="if(typeof currentUser!=='undefined'&&currentUser&&typeof navGo==='function')navGo('profile');else if(typeof navGo==='function')navGo('home');" title="Your profile">
+  <div class="app-sidebar-brand" id="sidebar-brand" onclick="if(typeof currentUser!=='undefined'&&currentUser&&typeof openOwnProfile==='function')openOwnProfile();else if(typeof navGo==='function')navGo('home');" title="Your profile">
     <img class="brand-logo" id="sidebar-badge-logo" src="art/packs/poke-ball.webp" alt="Badge" draggable="false"/>
     <div class="brand-text">POKÉMON<br/><span>CARD'S</span></div>
     <div class="brand-disclaimer">Fan-made · Base Set · Not affiliated with Nintendo / Game Freak / TPC</div>

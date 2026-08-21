@@ -688,7 +688,8 @@ body.market-active .app-content,
 body.collection-active .app-content,
 body.catalog-active .app-content,
 body.quests-active .app-content,
-body.shop-active .app-content{
+body.shop-active .app-content,
+body.binder-active .app-content{
   overflow:hidden!important;
   display:flex;
   flex-direction:column;
@@ -697,19 +698,22 @@ body.market-active #market.panel.active,
 body.collection-active #collection.panel.active,
 body.catalog-active #catalog.panel.active,
 body.quests-active #quests.panel.active,
-body.shop-active #shop.panel.active{
+body.shop-active #shop.panel.active,
+body.binder-active #binder.panel.active{
   flex:1;
   min-height:0;
   height:auto;
 }
-/* Catalog + Quests: full-width middle scroll like Market */
+/* Catalog + Quests + Binder: full-width middle scroll like Market */
 #catalog.page-shell,
-#quests.page-shell{
+#quests.page-shell,
+#binder.page-shell{
   height:100%;
   min-height:0;
 }
 #catalog .page-body,
-#quests .page-body{
+#quests .page-body,
+#binder .page-body{
   flex:1;
   min-height:0;
 }
@@ -2943,8 +2947,8 @@ body.home-active .app-content::-webkit-scrollbar{display:none}
   max-width:none;width:100%;margin:0;height:100%;min-height:0;
   display:flex;flex-direction:column;gap:10px
 }
-#open .open-set-rail{margin:0!important;display:flex;gap:8px;align-items:center;flex-shrink:0}
-#open .open-set-rail button{border:1px solid #30374d;border-radius:9px;background:linear-gradient(180deg,#20283d,#14192a);color:#aeb8d4;font-weight:800;font-size:13px;padding:8px 13px;cursor:pointer;transition:.2s}
+#open .open-set-rail{margin:0!important;display:flex;flex-wrap:nowrap;gap:8px;align-items:center;flex-shrink:0;overflow-x:auto;overflow-y:hidden;max-width:100%;scrollbar-width:thin;padding-bottom:.3rem}
+#open .open-set-rail button{border:1px solid #30374d;border-radius:9px;background:linear-gradient(180deg,#20283d,#14192a);color:#aeb8d4;font-weight:800;font-size:13px;padding:8px 13px;cursor:pointer;transition:.2s;flex-shrink:0;white-space:nowrap}
 #open .open-set-rail button.active{color:#ffe36d;border-color:#e3b918;background:linear-gradient(180deg,#3a3210,#1e1904);box-shadow:0 0 18px #f1bd1e25}
 body.open-active .app-content{
   overflow:hidden!important;

@@ -1102,9 +1102,11 @@ function toggleShowMissing(){
 }
 
 function updateCollectionProgress(){
+  const releasedSetCodes = (typeof SETS !== 'undefined' && SETS.length) ? new Set(SETS.map(s => s.code)) : null;
+  const released = releasedSetCodes ? CARDS.filter(c => releasedSetCodes.has(c.setCode)) : CARDS;
   const pool = currentSet && currentSet !== 'all'
-    ? CARDS.filter(c => c.set === currentSet)
-    : CARDS.slice();
+    ? released.filter(c => c.set === currentSet)
+    : released;
   const owned = pool.filter(c => (colGet(state.collection, c)) > 0).length;
   const total = pool.length || 1;
   const pct = Math.round(owned / total * 100);

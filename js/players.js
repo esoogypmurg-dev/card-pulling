@@ -74,10 +74,24 @@ async function viewPlayer(id){
     const { data, error } = await sb.from('profiles').select('*').eq('id', id).single();
     if(error) throw error;
     viewingPlayer = data;
-    viewingProfilePlayer = data;
-    ppTab = 'overview';
-    navGo('profile');
-    renderViewedPlayerProfile();
+    playerCollectionSetFilter = 'all';
+    playerBinderPage = 0;
+    document.getElementById('players-list').style.display = 'none';
+    document.getElementById('players-view').style.display = 'flex';
+    const titleEl = document.getElementById('players-view-title');
+    if(titleEl) titleEl.textContent = data.display_name || data.username || 'Trainer';
+    const statsEl = document.getElementById('players-view-stats');
+    if(statsEl){
+      const owned = (typeof CARDS !== 'undefined' ? CARDS : []).filter(c => colGet(data.collection||{}, c) > 0).length;
+      const stats = data.stats || {};
+      statsEl.textContent = owned + ' cards collected · ' + (stats.tradesCompleted||0) + ' trades completed';
+    }
+    const searchEl = document.getElementById('players-collection-search');
+    if(searchEl) searchEl.value = '';
+    setupPlayerSetFilters();
+    showPlayerTab('collection');
+    renderPlayerCollection();
+    renderPlayerBinder();
   }catch(e){
     console.error(e);
     showToast('Could not load player');
