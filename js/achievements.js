@@ -101,20 +101,64 @@ function achEnsureClaims(){
   if(!state.achievementClaims || typeof state.achievementClaims !== 'object') state.achievementClaims = {};
   return state.achievementClaims;
 }
+/* ========== Collection cache ==========
+   With 500+ achievements, re-scanning the full CARDS array (tens of thousands
+   of rows) separately for every single achievement's progress made the
+   Achievements page and the post-action recheck badly laggy. Build the owned-
+   card breakdown ONCE per render pass instead, and have every goalType that
+   needs collection data read from it. Reset at the top of the two hot entry
+   points (render, post-action recheck); everything else during that pass
+   reuses the same cache since nothing mutates the collection mid-render. */
+const ACH_KEY_SEP = '\u0001'; // shared separator between the cache build and lookup below
+let _achCache = null;
+function achResetCache(){ _achCache = null; }
+function achGetCache(){
+  if(_achCache) return _achCache;
+  const cache = {
+    ownedBySet: Object.create(null),
+    ownedByRaritySet: Object.create(null),
+    ownedByLabelSet: Object.create(null),
+    raritiesOwned: new Set(),
+    setsWithOwned: new Set(),
+    setsCompleted: 0,
+    totalOwned: 0,
+    totalValue: 0
+  };
+  if(typeof CARDS !== 'undefined' && state.collection){
+    const totalBySet = Object.create(null);
+    CARDS.forEach(c => { totalBySet[c.set] = (totalBySet[c.set]||0) + 1; });
+    const ANY = ACH_KEY_SEP;
+    CARDS.forEach(c => {
+      const n = typeof colGet === 'function' ? colGet(state.collection, c) : 0;
+      if(n <= 0) return;
+      cache.totalOwned++;
+      cache.totalValue += (Number(c.price)||0) * n;
+      cache.ownedBySet[c.set] = (cache.ownedBySet[c.set]||0) + 1;
+      cache.setsWithOwned.add(c.set);
+      cache.raritiesOwned.add(c.rarity);
+      cache.ownedByRaritySet[c.rarity+ANY+c.set] = (cache.ownedByRaritySet[c.rarity+ANY+c.set]||0) + 1;
+      cache.ownedByRaritySet[c.rarity+ANY] = (cache.ownedByRaritySet[c.rarity+ANY]||0) + 1;
+      if(c.rarityLabel){
+        cache.ownedByLabelSet[c.rarityLabel+ANY+c.set] = (cache.ownedByLabelSet[c.rarityLabel+ANY+c.set]||0) + 1;
+        cache.ownedByLabelSet[c.rarityLabel+ANY] = (cache.ownedByLabelSet[c.rarityLabel+ANY]||0) + 1;
+      }
+    });
+    if(typeof SETS !== 'undefined'){
+      SETS.forEach(s => {
+        const total = totalBySet[s.name] || 0;
+        if(total && (cache.ownedBySet[s.name]||0) >= total) cache.setsCompleted++;
+      });
+    }
+  }
+  _achCache = cache;
+  return cache;
+}
 function achCardsOwned(setName){
-  if(typeof CARDS === 'undefined' || !state.collection) return 0;
-  return CARDS.filter(c => (!setName || c.set === setName) && (typeof colGet === 'function' ? colGet(state.collection, c) : 0) > 0).length;
+  const cache = achGetCache();
+  return setName ? (cache.ownedBySet[setName] || 0) : cache.totalOwned;
 }
 function countCompletedSets(){
-  if(typeof SETS === 'undefined' || !SETS.length || typeof CARDS === 'undefined') return 0;
-  let n = 0;
-  SETS.forEach(s => {
-    const setCards = CARDS.filter(c => c.set === s.name);
-    if(!setCards.length) return;
-    const owned = setCards.filter(c => (typeof colGet === 'function' ? colGet(state.collection, c) : 0) > 0).length;
-    if(owned >= setCards.length) n++;
-  });
-  return n;
+  return achGetCache().setsCompleted;
 }
 
 /* ========== Auto-tracked stats & one-time milestone flags ==========
@@ -124,21 +168,10 @@ function countCompletedSets(){
    one increment call at their trigger site (see markMilestone/bumpStat below)
    plus, if the number isn't a plain state.stats field, a getter here. */
 function achSetDiversityCount(){
-  if(typeof SETS === 'undefined' || !SETS.length || typeof CARDS === 'undefined' || !state.collection) return 0;
-  let n = 0;
-  SETS.forEach(s => {
-    const has = CARDS.some(c => c.set === s.name && (typeof colGet === 'function' ? colGet(state.collection, c) : 0) > 0);
-    if(has) n++;
-  });
-  return n;
+  return achGetCache().setsWithOwned.size;
 }
 function achRarityDiversityCount(){
-  if(typeof CARDS === 'undefined' || !state.collection) return 0;
-  const rarities = new Set();
-  CARDS.forEach(c => {
-    if((typeof colGet === 'function' ? colGet(state.collection, c) : 0) > 0) rarities.add(c.rarity);
-  });
-  return rarities.size;
+  return achGetCache().raritiesOwned.size;
 }
 function achAchievementsClaimedCount(){
   const claims = achEnsureClaims();
@@ -235,26 +268,14 @@ function achProgressValue(a){
   }
   if(a.goalType === 'cards_owned') return achCardsOwned(a.setFilter || null);
   if(a.goalType === 'rarity_owned'){
-    if(typeof CARDS === 'undefined' || !state.collection) return 0;
-    return CARDS.filter(c =>
-      (a.rarityLabelFilter ? c.rarityLabel === a.rarityLabelFilter : c.rarity === a.rarityFilter) &&
-      (!a.setFilter || c.set === a.setFilter) &&
-      (typeof colGet === 'function' ? colGet(state.collection, c) : 0) > 0
-    ).length;
+    const cache = achGetCache();
+    const map = a.rarityLabelFilter ? cache.ownedByLabelSet : cache.ownedByRaritySet;
+    const key = (a.rarityLabelFilter || a.rarityFilter || '') + ACH_KEY_SEP + (a.setFilter || '');
+    return map[key] || 0;
   }
   if(a.goalType === 'holos_pulled') return Number(st.holosPulled) || 0;
   if(a.goalType === 'trades_completed') return Number(st.tradesCompleted) || 0;
-  if(a.goalType === 'collection_value'){
-    if(typeof collectionTotalValue === 'function') return Number(collectionTotalValue()) || 0;
-    // fallback: sum owned card prices
-    if(typeof CARDS === 'undefined' || !state.collection) return 0;
-    let v = 0;
-    CARDS.forEach(c => {
-      const n = typeof colGet === 'function' ? colGet(state.collection, c) : 0;
-      if(n > 0) v += (Number(c.price)||0) * n;
-    });
-    return v;
-  }
+  if(a.goalType === 'collection_value') return achGetCache().totalValue;
   if(a.goalType === 'best_pull_value') return Number(st.bestPullValue) || 0;
   if(a.goalType === 'sets_completed'){
     if(typeof countCompletedSets === 'function') return countCompletedSets();
@@ -341,6 +362,7 @@ function achRatio(a){
 function renderAchievements(){
   achLoadCatalog();
   achEnsureClaims();
+  achResetCache();
   const list = achievementCatalog.slice();
   const done = list.filter(a => achIsClaimed(a.id) || achIsComplete(a)).length;
   const claimedPts = list.filter(a => achIsClaimed(a.id)).reduce((s,a) => s + (Number(a.pts)||0), 0);
@@ -1034,6 +1056,7 @@ let _popupAchId = null;
 function checkNewlyCompletedAchievements(){
   try{
     achLoadCatalog();
+    achResetCache();
     if(!state.achNotified) state.achNotified = {};
     const newly = [];
     achievementCatalog.forEach(a => {
