@@ -236,7 +236,7 @@ function lwRenderPackCardPicker(){
   }
 
   // card mode
-  let list = ((typeof releasedCards === 'function') ? releasedCards() : (typeof CARDS !== 'undefined' ? CARDS : [])).slice();
+  let list = ((typeof obtainableCards === 'function') ? obtainableCards() : (typeof CARDS !== 'undefined' ? CARDS : [])).slice();
   if(q) list = list.filter(c => (c.name||'').toLowerCase().includes(q) || String(c.cardNumber||'').includes(q));
   list = list.slice(0, 80);
   box.innerHTML = list.map(function(c){
@@ -416,7 +416,7 @@ function lwRenderPicker(forCosmetic){
     }).join('') || '<span style="color:var(--muted)">No cosmetics</span>';
     return;
   }
-  let list = ((typeof releasedCards === 'function') ? releasedCards() : (typeof CARDS !== 'undefined' ? CARDS : [])).slice();
+  let list = ((typeof obtainableCards === 'function') ? obtainableCards() : (typeof CARDS !== 'undefined' ? CARDS : [])).slice();
   if(q) list = list.filter(c => (c.name||'').toLowerCase().includes(q) || String(c.cardNumber||'').includes(q));
   list = list.slice(0, 80);
   box.innerHTML = list.map(function(c){
@@ -1666,7 +1666,7 @@ function lwResolveSlotCard(slot){
   }
   // mystery / random / empty → pick a real card so the reveal has art + name
   if(slot.type === 'mystery' || slot.type === 'random' || (!slot.card_key && slot.type !== 'pack' && slot.type !== 'cosmetic')){
-    const pool = (typeof releasedCards === 'function') ? releasedCards() : ((typeof CARDS !== 'undefined' && CARDS.length) ? CARDS : []);
+    const pool = (typeof obtainableCards === 'function') ? obtainableCards() : ((typeof CARDS !== 'undefined' && CARDS.length) ? CARDS : []);
     if(!pool.length) return null;
     return pool[Math.floor(Math.random()*pool.length)];
   }

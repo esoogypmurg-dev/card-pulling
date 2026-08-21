@@ -687,7 +687,7 @@ function getRandomRarity(){
 }
 function pullCard(){
   const rarity=getRandomRarity();
-  const source=(typeof releasedCards==='function')?releasedCards():CARDS;
+  const source=(typeof obtainableCards==='function')?obtainableCards():CARDS;
   const pool=source.filter(c=>c.rarity===rarity);
   return pool[Math.floor(Math.random()*pool.length)] || source[0];
 }

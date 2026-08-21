@@ -229,7 +229,7 @@ function tradeUpSubmit(){
     if(String(c.name||'').trim().toLowerCase() === 'charizard') return false;
     return true;
   };
-  const rewardPool = (typeof releasedCards === 'function') ? releasedCards() : CARDS;
+  const rewardPool = (typeof obtainableCards === 'function') ? obtainableCards() : CARDS;
   let pool = rewardPool.filter(c => c.rarity === targetRarity && eligibleForReward(c));
   if(!pool.length) pool = rewardPool.filter(c => c.rarity === TRADEUP_RARITY_ORDER[sourceRank] && eligibleForReward(c));
   if(!pool.length) pool = rewardPool.filter(eligibleForReward);

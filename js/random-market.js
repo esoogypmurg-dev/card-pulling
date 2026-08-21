@@ -60,7 +60,7 @@ function weightedRandomCard(){
 }
 
 function makeFeaturedOffer(){
-  const pool = (typeof releasedCards === 'function') ? releasedCards() : CARDS;
+  const pool = (typeof obtainableCards === 'function') ? obtainableCards() : CARDS;
   // Rare/Holo you don't own, priced at 2× market
   const missingRares = pool.filter(c =>
     (c.rarity==='epic' || c.rarity==='legendary') && isMissing(c.id)

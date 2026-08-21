@@ -1,24 +1,72 @@
 /* ===== TEAM ROCKET DUEL EVENT ===== */
+// Team Rocket's deck is the "TR" set in the main catalog (visible in Collection/Binder
+// once won, but excluded from packs/trade-up/wheel/market via event_exclusive on `sets`).
 let ROCKET_CARDS = [];
 let rocketCardsLoaded = false;
 
 async function loadRocketCards(){
   if(rocketCardsLoaded) return;
-  if(!sb) return;
-  try{
-    const { data, error } = await sb.from('rocket_cards').select('*');
-    if(error) throw error;
-    ROCKET_CARDS = (data || []).map(r => ({
-      id: r.id, key: r.key, name: r.name, cardType: r.card_type,
-      rarity: r.rarity, type1: r.type1, hp: Number(r.hp) || 0,
-      attacks: Array.isArray(r.attacks) ? r.attacks : [],
-      art: r.art_path, price: Number(r.price) || 0,
-      battleEligible: r.battle_eligible !== false
-    }));
-    rocketCardsLoaded = true;
-  }catch(e){
-    console.warn('[rocket] load failed', e.message || e);
+  if(typeof CARDS === 'undefined' || !CARDS.length) return;
+  ROCKET_CARDS = CARDS.filter(c => c.setCode === 'TR').map(c => ({
+    id: c.id, key: c.key, name: c.name,
+    cardType: (Number(c.hp) || 0) > 0 ? 'pokemon' : 'trainer',
+    rarity: c.rarity, type1: c.type1, hp: Number(c.hp) || 0,
+    attacks: Array.isArray(c.attacks) ? c.attacks : [],
+    art: c.art, price: Number(c.price) || 0,
+    battleEligible: c.battleEligible !== false
+  }));
+  rocketCardsLoaded = ROCKET_CARDS.length > 0;
+}
+
+/* ---- Grunt -> Jessie & James -> Giovanni ladder ---- */
+function rocketLadderState(){
+  if(!state.rocketLadder) state.rocketLadder = { gruntWins: 0, jessieBeat: false, jamesBeat: false };
+  return state.rocketLadder;
+}
+
+/** Which persona the player currently faces, based on ladder progress. */
+function rocketCurrentPersona(){
+  const l = rocketLadderState();
+  if(l.gruntWins < 5) return 'grunt';
+  if(!l.jessieBeat && !l.jamesBeat) return Math.random() < 0.5 ? 'jessie' : 'james';
+  if(!l.jessieBeat) return 'jessie';
+  if(!l.jamesBeat) return 'james';
+  return 'giovanni';
+}
+
+const ROCKET_PERSONAS = {
+  grunt:    { label: 'Team Rocket Grunt', rarities: ['common','uncommon'] },
+  jessie:   { label: 'Jessie', rarities: ['epic'] },
+  james:    { label: 'James', rarities: ['epic'] },
+  giovanni: { label: 'Giovanni', rarities: ['legendary'] }
+};
+
+function rocketLadderLabel(){
+  const l = rocketLadderState();
+  return 'Grunt ' + Math.min(l.gruntWins,5) + '/5 · Jessie ' + (l.jessieBeat?'✓':'✗') +
+    ' · James ' + (l.jamesBeat?'✓':'✗') + ' · Giovanni ' + (l.gruntWins>=5 && l.jessieBeat && l.jamesBeat ? 'Ready' : '🔒');
+}
+
+function rocketRenderLadder(){
+  const el = document.getElementById('rocket-ladder');
+  if(el) el.textContent = rocketLadderLabel();
+}
+
+function rocketAdvanceLadder(persona){
+  const l = rocketLadderState();
+  if(persona === 'grunt') l.gruntWins = Math.min(5, l.gruntWins + 1);
+  else if(persona === 'jessie') l.jessieBeat = true;
+  else if(persona === 'james') l.jamesBeat = true;
+  else if(persona === 'giovanni'){
+    // Cleared the whole ladder — reset so they can run it again.
+    state.rocketStats = state.rocketStats || { wins:0, losses:0, streak:0 };
+    state.rocketStats.giovanniClears = (state.rocketStats.giovanniClears||0) + 1;
+    state.rocketLadder = { gruntWins: 0, jessieBeat: false, jamesBeat: false };
   }
+}
+
+function rocketResetLadder(){
+  state.rocketLadder = { gruntWins: 0, jessieBeat: false, jamesBeat: false };
 }
 
 function rocketIsEventArmed(){
@@ -34,6 +82,7 @@ function rocketIsEventArmed(){
 let rb = {
   wagerKey: null,
   opponent: null,
+  persona: null,
   playerHp: 0, playerMaxHp: 0,
   oppHp: 0, oppMaxHp: 0,
   active: false
@@ -55,6 +104,7 @@ function renderRocketScreen(){
   rocketRenderWagerList();
   rocketUpdateStatsBar();
   rocketRenderPreview();
+  rocketRenderLadder();
 }
 
 function rocketUpdateStatsBar(){
@@ -92,7 +142,8 @@ function rocketRenderWagerList(){
 function rocketSelectWager(key){
   if(rb.active) return;
   rb.wagerKey = key;
-  rb.opponent = rocketPickOpponent(key);
+  rb.persona = rocketCurrentPersona();
+  rb.opponent = rocketPickOpponent(key, rb.persona);
   rocketRenderWagerList();
   rocketRenderPreview();
 }
@@ -101,23 +152,28 @@ function rocketClearWager(){
   if(rb.active) return;
   rb.wagerKey = null;
   rb.opponent = null;
+  rb.persona = null;
   rocketRenderWagerList();
   rocketRenderPreview();
   const log = document.getElementById('rocket-log');
   if(log) log.textContent = '';
 }
 
-function rocketPickOpponent(key){
+function rocketPickOpponent(key, persona){
   const card = resolveCard(key);
   if(!card) return null;
-  const pool = ROCKET_CARDS.filter(r => r.battleEligible && r.cardType === 'pokemon');
+  const rarities = new Set((ROCKET_PERSONAS[persona] || ROCKET_PERSONAS.grunt).rarities);
+  let pool = ROCKET_CARDS.filter(r => r.battleEligible && r.cardType === 'pokemon' && rarities.has(r.rarity));
+  if(!pool.length) pool = ROCKET_CARDS.filter(r => r.battleEligible && r.cardType === 'pokemon');
   if(!pool.length) return null;
   const myScore = rocketPowerScore(card.hp, card.attacks);
   // sort by closeness to my power score, pick from the closest few for some variance
   const sorted = pool.slice().sort((a,b) =>
     Math.abs(rocketPowerScore(a.hp,a.attacks) - myScore) - Math.abs(rocketPowerScore(b.hp,b.attacks) - myScore));
   const candidates = sorted.slice(0, Math.min(4, sorted.length));
-  return candidates[Math.floor(Math.random() * candidates.length)];
+  const picked = candidates[Math.floor(Math.random() * candidates.length)];
+  if(picked) picked.personaLabel = (ROCKET_PERSONAS[persona] || ROCKET_PERSONAS.grunt).label;
+  return picked;
 }
 
 function rocketRenderPreview(){
@@ -138,7 +194,7 @@ function rocketRenderPreview(){
   const oppName = document.getElementById('rocket-opp-name');
   if(rb.opponent){
     oppFace.innerHTML = rb.opponent.art ? `<img src="${rb.opponent.art}" onerror="this.style.display='none'">` : '<div style="font-size:2.2rem">🚀</div>';
-    oppName.textContent = rb.opponent.name;
+    oppName.textContent = (rb.opponent.personaLabel ? rb.opponent.personaLabel + ' sent out ' : '') + rb.opponent.name;
   }else{
     oppFace.innerHTML = '<div style="color:var(--muted);text-align:center">🚀<br>Opponent</div>';
     oppName.textContent = 'Waiting for battle';
@@ -260,19 +316,24 @@ async function rocketFinishBattle(won){
       }
     }
 
-    rocketLog('You won! ' + opp.name + ' joins your collection.' + bonusMsg);
-    showToast('Victory! Won ' + opp.name + (bonusMsg ? ' + bonus card' : ''));
+    const wasGiovanni = rb.persona === 'giovanni';
+    rocketAdvanceLadder(rb.persona);
+
+    rocketLog('You won! ' + opp.name + ' joins your collection.' + bonusMsg +
+      (wasGiovanni ? ' Giovanni is defeated — the ladder resets, go again!' : ''));
+    showToast(wasGiovanni ? 'Giovanni defeated! Ladder reset — run it again.' : 'Victory! Won ' + opp.name + (bonusMsg ? ' + bonus card' : ''));
   }else{
     state.rocketStats.losses = (state.rocketStats.losses||0) + 1;
     state.rocketStats.streak = 0;
+    rocketResetLadder();
 
     if(card){
       const key = card.key || card.id;
       colSet(state.collection, key, Math.max(0, colGet(state.collection, key) - 1));
     }
 
-    rocketLog('You lost! ' + (card ? card.name : 'Your card') + ' was taken by Team Rocket.');
-    showToast('Defeat — your wagered card was lost.');
+    rocketLog('You lost! ' + (card ? card.name : 'Your card') + ' was taken by Team Rocket. Ladder reset — back to Grunt 1.');
+    showToast('Defeat — your wagered card was lost. Ladder reset.');
   }
 
   if(typeof save === 'function') await save();
@@ -280,8 +341,10 @@ async function rocketFinishBattle(won){
   if(typeof renderCollection === 'function') renderCollection();
 
   rocketUpdateStatsBar();
+  rocketRenderLadder();
   rb.wagerKey = null;
   rb.opponent = null;
+  rb.persona = null;
 
   setTimeout(() => {
     rocketRenderWagerList();

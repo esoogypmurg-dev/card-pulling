@@ -64,7 +64,7 @@ async function loadSetsAndCards() {
     if (!sb) throw new Error('Supabase not initialized');
     const { data: sets, error: sErr } = await sb
       .from('sets')
-      .select('code,name,release_date,card_count,cover_art,sort_order')
+      .select('code,name,release_date,card_count,cover_art,sort_order,event_exclusive')
       .eq('hidden', false)
       .order('sort_order', { ascending: true });
     if (sErr) throw sErr;
@@ -102,6 +102,15 @@ async function ensureCardsForSet(setCode) {
 function releasedCards() {
   if (!SETS || !SETS.length) return CARDS;
   const codes = new Set(SETS.map(s => s.code));
+  return CARDS.filter(c => codes.has(c.setCode));
+}
+
+/** Released cards that can actually be acquired through packs/trade-up/wheel/market —
+ *  excludes event-exclusive sets (e.g. Team Rocket), which are visible once owned but
+ *  only obtainable through their specific event. */
+function obtainableCards() {
+  if (!SETS || !SETS.length) return CARDS;
+  const codes = new Set(SETS.filter(s => !s.event_exclusive).map(s => s.code));
   return CARDS.filter(c => codes.has(c.setCode));
 }
 

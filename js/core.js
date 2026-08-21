@@ -230,10 +230,10 @@ function isPromoSet(set){
   return /promo/i.test(name) || /promo/i.test(code);
 }
 
-/** Sets that should appear as buyable/openable booster packs (excludes promo-only sets). */
+/** Sets that should appear as buyable/openable booster packs (excludes promo-only and event-exclusive sets). */
 function boosterEligibleSets(){
   if(!SETS || !SETS.length) return [];
-  return SETS.filter(s => !isPromoSet(s));
+  return SETS.filter(s => !isPromoSet(s) && !s.event_exclusive);
 }
 
 function rebuildBinderSetsFromData(){
