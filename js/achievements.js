@@ -76,7 +76,7 @@ function achProgressValue(a){
   if(a.goalType === 'rarity_owned'){
     if(typeof CARDS === 'undefined' || !state.collection) return 0;
     return CARDS.filter(c =>
-      c.rarity === a.rarityFilter &&
+      (a.rarityLabelFilter ? c.rarityLabel === a.rarityLabelFilter : c.rarity === a.rarityFilter) &&
       (!a.setFilter || c.set === a.setFilter) &&
       (typeof colGet === 'function' ? colGet(state.collection, c) : 0) > 0
     ).length;
@@ -420,6 +420,7 @@ function achAdminClearForm(){
   set('ach-admin-series',''); set('ach-admin-tier','0'); set('ach-admin-hidden',''); set('ach-admin-card','');
   const s = document.getElementById('ach-admin-set'); if(s) s.value='';
   const r = document.getElementById('ach-admin-rarity'); if(r) r.value='';
+  set('ach-admin-rarity-label','');
   const cat = document.getElementById('ach-admin-cat'); if(cat) cat.value='Collection';
   const goal = document.getElementById('ach-admin-goal'); if(goal) goal.value='packs_opened';
   const msg = document.getElementById('ach-admin-msg'); if(msg) msg.textContent='';
@@ -437,6 +438,7 @@ function achAdminEdit(id){
   set('ach-admin-target', a.target||1); set('ach-admin-pts', a.pts||0);
   set('ach-admin-money', a.rewardMoney||0); set('ach-admin-packs', a.rewardPacks||0);
   set('ach-admin-set', a.setFilter||''); set('ach-admin-rarity', a.rarityFilter||'');
+  set('ach-admin-rarity-label', a.rarityLabelFilter||'');
   set('ach-admin-series', a.series||''); set('ach-admin-tier', a.tier||0);
   set('ach-admin-hidden', a.hiddenUntil||''); set('ach-admin-card', a.rewardCard||'');
   const btn = document.getElementById('ach-admin-savebtn'); if(btn) btn.textContent='Save changes';
@@ -458,11 +460,12 @@ function achAdminReadForm(){
   const rewardPacks = Math.max(0, parseInt((document.getElementById('ach-admin-packs')||{}).value,10)||0);
   const setFilter = ((document.getElementById('ach-admin-set')||{}).value||'').trim();
   const rarityFilter = ((document.getElementById('ach-admin-rarity')||{}).value||'').trim();
+  const rarityLabelFilter = ((document.getElementById('ach-admin-rarity-label')||{}).value||'').trim();
   const series = ((document.getElementById('ach-admin-series')||{}).value||'').trim();
   const tier = Math.max(0, parseInt((document.getElementById('ach-admin-tier')||{}).value,10)||0);
   const hiddenUntil = ((document.getElementById('ach-admin-hidden')||{}).value||'').trim();
   const rewardCard = ((document.getElementById('ach-admin-card')||{}).value||'').trim();
-  return { name, icon, desc, category, goalType, target, pts, rewardMoney, rewardPacks, setFilter, rarityFilter, series, tier, hiddenUntil, rewardCard };
+  return { name, icon, desc, category, goalType, target, pts, rewardMoney, rewardPacks, setFilter, rarityFilter, rarityLabelFilter, series, tier, hiddenUntil, rewardCard };
 }
 function achAdminSave(){
   achLoadCatalog();
@@ -476,6 +479,7 @@ function achAdminSave(){
     Object.assign(existing, f);
     if(!existing.setFilter) delete existing.setFilter;
     if(!existing.rarityFilter) delete existing.rarityFilter;
+    if(!existing.rarityLabelFilter) delete existing.rarityLabelFilter;
     if(!existing.series) delete existing.series;
     if(!existing.tier) delete existing.tier;
     if(!existing.hiddenUntil) delete existing.hiddenUntil;
@@ -491,6 +495,7 @@ function achAdminSave(){
   const a = Object.assign({ id: achUid() }, f);
   if(!a.setFilter) delete a.setFilter;
   if(!a.rarityFilter) delete a.rarityFilter;
+  if(!a.rarityLabelFilter) delete a.rarityLabelFilter;
   if(!a.series) delete a.series;
   if(!a.tier) delete a.tier;
   if(!a.hiddenUntil) delete a.hiddenUntil;
@@ -544,7 +549,7 @@ function achAdminRender(){
     ' <span style="color:var(--muted);font-weight:600;font-size:.78rem">· '+(a.category||'')+'</span></div>'+
     '<div style="font-size:.78rem;color:var(--muted);margin-top:.2rem">'+String(a.goalType)+' ≥ '+a.target+
     (a.setFilter?(' · set: '+a.setFilter):'')+
-    (a.rarityFilter?(' · rarity: '+a.rarityFilter):'')+
+    (a.rarityLabelFilter?(' · rarity label: '+a.rarityLabelFilter):(a.rarityFilter?(' · rarity: '+a.rarityFilter):''))+
     (a.series?(' · series: '+a.series+' t'+a.tier):'')+
     (a.hiddenUntil?(' · after: '+a.hiddenUntil):'')+
     (a.pts?(' · '+a.pts+' pts'):'')+
@@ -709,6 +714,12 @@ function achRebuildSetSelects(){
   };
   fillSelect('ach-admin-set', true);
   fillSelect('ach-admin-gen-set', false);
+
+  const dl = document.getElementById('ach-rarity-label-options');
+  if(dl && typeof CARDS !== 'undefined' && CARDS.length){
+    const labels = Array.from(new Set(CARDS.map(c => c.rarityLabel).filter(Boolean))).sort();
+    dl.innerHTML = labels.map(l => `<option value="${String(l).replace(/"/g,'&quot;')}">`).join('');
+  }
 }
 
 function achGenerateForSet(setName){
@@ -785,4 +796,73 @@ function achGenerateForSet(setName){
 
 // boot catalog
 achLoadCatalog();
+
+/* ========== Proactive "achievement unlocked" popup (mirrors the quest-complete popup) ========== */
+let _achNotifyQueue = [];
+let _achNotifyOpen = false;
+let _popupAchId = null;
+
+function checkNewlyCompletedAchievements(){
+  try{
+    achLoadCatalog();
+    if(!state.achNotified) state.achNotified = {};
+    const newly = [];
+    achievementCatalog.forEach(a => {
+      if(!achIsVisible(a)) return;
+      if(achIsClaimed(a.id)) return;
+      if(!achIsComplete(a)) return;
+      if(state.achNotified[a.id]) return;
+      state.achNotified[a.id] = true;
+      newly.push(a);
+    });
+    if(newly.length){
+      if(typeof save === 'function') save();
+      newly.forEach(showAchievementCompletePopup);
+    }
+  }catch(e){ console.warn('ach notify', e); }
+}
+
+function showAchievementCompletePopup(a){
+  if(!a) return;
+  _achNotifyQueue.push(a);
+  pumpAchNotify();
+}
+
+function pumpAchNotify(){
+  if(_achNotifyOpen) return;
+  const a = _achNotifyQueue.shift();
+  if(!a){ _popupAchId = null; return; }
+  _achNotifyOpen = true;
+  _popupAchId = a.id;
+  const m = document.getElementById('achievement-complete-modal');
+  const icon = document.getElementById('ac-icon');
+  const title = document.getElementById('ac-title');
+  const desc = document.getElementById('ac-desc');
+  const rew = document.getElementById('ac-reward');
+  if(icon) icon.textContent = a.icon || '🏆';
+  if(title) title.textContent = a.name || 'Achievement complete!';
+  if(desc) desc.textContent = a.desc || '';
+  const bits = [];
+  if(a.rewardMoney) bits.push('+$' + Number(a.rewardMoney));
+  if(a.rewardPacks) bits.push('+' + a.rewardPacks + ' pack' + (a.rewardPacks===1?'':'s'));
+  if(a.rewardCard){ const c = typeof resolveCard==='function' ? resolveCard(a.rewardCard) : null; bits.push('+' + (c ? c.name : a.rewardCard)); }
+  if(a.pts) bits.push(a.pts + ' pts');
+  if(rew) rew.textContent = bits.join(' · ') || 'Claim it in Achievements';
+  if(m) m.classList.add('open');
+}
+
+function claimFromAchievementPopup(){
+  if(!_popupAchId){ closeAchievementCompleteModal(); return; }
+  const id = _popupAchId;
+  if(typeof achClaim === 'function') achClaim(id);
+  closeAchievementCompleteModal();
+}
+
+function closeAchievementCompleteModal(){
+  const m = document.getElementById('achievement-complete-modal');
+  if(m) m.classList.remove('open');
+  _achNotifyOpen = false;
+  _popupAchId = null;
+  setTimeout(pumpAchNotify, 200);
+}
 

@@ -49,13 +49,14 @@ function offerValueScore(offer){
 
 function weightedRandomCard(){
   // Bias toward mid/high value occasionally
+  const source = (typeof obtainableCards === 'function') ? obtainableCards() : CARDS;
   const r = Math.random();
   let pool;
-  if(r < 0.12) pool = CARDS.filter(c=>c.rarity==='legendary');
-  else if(r < 0.35) pool = CARDS.filter(c=>c.rarity==='epic');
-  else if(r < 0.6) pool = CARDS.filter(c=>c.rarity==='uncommon');
-  else pool = CARDS.filter(c=>c.rarity==='common');
-  if(!pool.length) pool = CARDS;
+  if(r < 0.12) pool = source.filter(c=>c.rarity==='legendary');
+  else if(r < 0.35) pool = source.filter(c=>c.rarity==='epic');
+  else if(r < 0.6) pool = source.filter(c=>c.rarity==='uncommon');
+  else pool = source.filter(c=>c.rarity==='common');
+  if(!pool.length) pool = source;
   return pool[Math.floor(Math.random()*pool.length)];
 }
 
@@ -1250,6 +1251,7 @@ function sellOne(id){
   if(typeof trackDaily==='function'){ trackDaily('sells',1); trackDaily('saleMoney', payout); }
   save(); updateUI(); renderCollection(); renderBinder(); renderQuests();
   if(typeof checkNewlyCompletedQuests === 'function') checkNewlyCompletedQuests();
+  if(typeof checkNewlyCompletedAchievements === 'function') checkNewlyCompletedAchievements();
   showToast('Shop bought '+card.name+' for $'+payout.toFixed(2));
 }
 function sellAll(id){
@@ -1278,6 +1280,7 @@ function sellAll(id){
   if(typeof trackDaily==='function'){ trackDaily('sells', n); trackDaily('saleMoney', total); }
   save(); updateUI(); renderCollection(); renderBinder(); renderQuests();
   if(typeof checkNewlyCompletedQuests === 'function') checkNewlyCompletedQuests();
+  if(typeof checkNewlyCompletedAchievements === 'function') checkNewlyCompletedAchievements();
   showToast('Shop bought ×'+n+' '+card.name+' for $'+total.toFixed(2));
 }
 

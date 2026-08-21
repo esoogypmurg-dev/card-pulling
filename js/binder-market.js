@@ -393,6 +393,7 @@ function confirmBulkSell(){
   if(typeof trackDaily==='function'){ trackDaily('sells', sold); trackDaily('saleMoney', total); }
   save(); updateUI(); renderCollection(); renderBinder(); renderQuests();
   if(typeof checkNewlyCompletedQuests === 'function') checkNewlyCompletedQuests();
+  if(typeof checkNewlyCompletedAchievements === 'function') checkNewlyCompletedAchievements();
   closeBulkSellModal();
   showToast('Shop bought ×' + sold + ' ' + card.name + ' for $' + total.toFixed(2));
   if((colGet(state.collection, id)) > 0) openZoom(card, 0);

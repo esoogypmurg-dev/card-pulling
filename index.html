@@ -1433,6 +1433,11 @@
             </select>
           </div>
           <div>
+            <label style="display:block;font-size:.75rem;color:var(--muted);margin-bottom:.2rem">Exact TCG rarity label (overrides the tier above, e.g. "Rainbow Rare")</label>
+            <input type="text" id="ach-admin-rarity-label" list="ach-rarity-label-options" maxlength="60" placeholder="e.g. Rainbow Rare" style="width:100%;padding:.45rem .55rem;border-radius:8px;border:1px solid #2a314d;background:#0f1320;color:var(--text)">
+            <datalist id="ach-rarity-label-options"></datalist>
+          </div>
+          <div>
             <label style="display:block;font-size:.75rem;color:var(--muted);margin-bottom:.2rem">Series id (chain)</label>
             <input type="text" id="ach-admin-series" maxlength="40" placeholder="packs_volume" style="width:100%;padding:.45rem .55rem;border-radius:8px;border:1px solid #2a314d;background:#0f1320;color:var(--text)">
           </div>
@@ -2339,6 +2344,18 @@
     <button class="btn" id="qc-claim-btn" onclick="claimFromQuestPopup()">Claim Reward</button>
     <button class="btn btn-secondary" style="margin-top:.45rem" onclick="closeQuestCompleteModal(); navGo('quests');">View Quests</button>
     <button class="btn btn-secondary" style="margin-top:.35rem" onclick="closeQuestCompleteModal()">Later</button>
+  </div>
+</div>
+
+<div id="achievement-complete-modal" onclick="if(event.target===this)closeAchievementCompleteModal()">
+  <div class="quest-complete-box">
+    <div class="qc-star" id="ac-icon">🏆</div>
+    <h3 id="ac-title">Achievement Complete!</h3>
+    <p id="ac-desc"></p>
+    <div class="qc-reward" id="ac-reward"></div>
+    <button class="btn" onclick="claimFromAchievementPopup()">Claim Reward</button>
+    <button class="btn btn-secondary" style="margin-top:.45rem" onclick="closeAchievementCompleteModal(); navGo('achievements');">View Achievements</button>
+    <button class="btn btn-secondary" style="margin-top:.35rem" onclick="closeAchievementCompleteModal()">Later</button>
   </div>
 </div>
 

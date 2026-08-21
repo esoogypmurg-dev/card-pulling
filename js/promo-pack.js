@@ -685,6 +685,7 @@ function finishOpening(){
   updateUI(); renderCollection(); renderSellList(); renderBinder(); renderQuests();
   renderSealedPackPreview();
   if(typeof checkNewlyCompletedQuests === 'function') checkNewlyCompletedQuests();
+  if(typeof checkNewlyCompletedAchievements === 'function') checkNewlyCompletedAchievements();
   showToast('Pack complete!');
 }
 
