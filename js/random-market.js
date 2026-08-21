@@ -60,8 +60,9 @@ function weightedRandomCard(){
 }
 
 function makeFeaturedOffer(){
+  const pool = (typeof releasedCards === 'function') ? releasedCards() : CARDS;
   // Rare/Holo you don't own, priced at 2× market
-  const missingRares = CARDS.filter(c =>
+  const missingRares = pool.filter(c =>
     (c.rarity==='epic' || c.rarity==='legendary') && isMissing(c.id)
   );
   let card;
@@ -69,8 +70,8 @@ function makeFeaturedOffer(){
     card = missingRares[Math.floor(Math.random()*missingRares.length)];
   } else {
     // fallback any rare
-    const rares = CARDS.filter(c=>c.rarity==='epic'||c.rarity==='legendary');
-    card = rares[Math.floor(Math.random()*rares.length)] || CARDS[0];
+    const rares = pool.filter(c=>c.rarity==='epic'||c.rarity==='legendary');
+    card = rares[Math.floor(Math.random()*rares.length)] || pool[0];
   }
   const price = Math.round((card.price||1) * 2 * 100) / 100;
   const trainer = MARKET_NAMES[Math.floor(Math.random()*MARKET_NAMES.length)];

@@ -359,9 +359,11 @@ function updateHomeDashboard(){
   if(typeof renderHomeRareShowcase==='function') renderHomeRareShowcase();
   if(typeof renderHomeUpcoming==='function') renderHomeUpcoming();
   if(typeof ensureHomeRailOpen==='function') ensureHomeRailOpen();
-  const ownedCards = CARDS.filter(c => colGet(state.collection, c) > 0);
+  const releasedSetCodes = (typeof SETS !== 'undefined' && SETS.length) ? new Set(SETS.map(s => s.code)) : null;
+  const released = releasedSetCodes ? CARDS.filter(c => releasedSetCodes.has(c.setCode)) : CARDS;
+  const ownedCards = released.filter(c => colGet(state.collection, c) > 0);
   const owned = ownedCards.length;
-  const total = CARDS.length || 1;
+  const total = released.length || 1;
   const pct = Math.round(owned / total * 100);
   const setText = (id, value) => { const el = document.getElementById(id); if(el) el.textContent = value; };
   setText('home-money', '$' + (Number(state.money) || 0).toFixed(2));

@@ -98,6 +98,13 @@ async function ensureCardsForSet(setCode) {
   return CARDS_BY_SET[setCode] || [];
 }
 
+/** Cards belonging to a currently-visible (non-hidden) set — excludes staged/unreleased sets. */
+function releasedCards() {
+  if (!SETS || !SETS.length) return CARDS;
+  const codes = new Set(SETS.map(s => s.code));
+  return CARDS.filter(c => codes.has(c.setCode));
+}
+
 function cardsInSet(setCodeOrName) {
   if (!setCodeOrName) return CARDS.slice();
   // accept code or full name

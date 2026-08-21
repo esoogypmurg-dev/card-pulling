@@ -1666,7 +1666,7 @@ function lwResolveSlotCard(slot){
   }
   // mystery / random / empty → pick a real card so the reveal has art + name
   if(slot.type === 'mystery' || slot.type === 'random' || (!slot.card_key && slot.type !== 'pack' && slot.type !== 'cosmetic')){
-    const pool = (typeof CARDS !== 'undefined' && CARDS.length) ? CARDS : [];
+    const pool = (typeof releasedCards === 'function') ? releasedCards() : ((typeof CARDS !== 'undefined' && CARDS.length) ? CARDS : []);
     if(!pool.length) return null;
     return pool[Math.floor(Math.random()*pool.length)];
   }

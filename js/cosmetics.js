@@ -375,8 +375,9 @@ function renderViewedPlayerProfile(){
   const uname = p.username || 'trainer';
   const stats = p.stats || {};
   const col = p.collection || {};
-  const ownedCards = (typeof CARDS !== 'undefined') ? CARDS.filter(c => (typeof colGet === 'function' ? colGet(col,c) : Number(col[c.id]||0)) > 0) : [];
-  const total = (typeof CARDS !== 'undefined') ? CARDS.length : 0;
+  const released = (typeof releasedCards === 'function') ? releasedCards() : ((typeof CARDS !== 'undefined') ? CARDS : []);
+  const ownedCards = released.filter(c => (typeof colGet === 'function' ? colGet(col,c) : Number(col[c.id]||0)) > 0);
+  const total = released.length;
   const owned = ownedCards.length;
   const pct = total ? Math.round(owned/total*100) : 0;
   const online = getOnlinePlayerIds().has(String(p.id));
@@ -449,9 +450,10 @@ function renderPlayerProfile(){
     }
   }
   const st = state.stats || {};
-  const owned = (typeof CARDS !== 'undefined' && state.collection)
-    ? CARDS.filter(c => (typeof colGet === 'function' ? colGet(state.collection, c) : 0) > 0).length : 0;
-  const total = (typeof CARDS !== 'undefined') ? CARDS.length : 0;
+  const released = (typeof releasedCards === 'function') ? releasedCards() : ((typeof CARDS !== 'undefined') ? CARDS : []);
+  const owned = state.collection
+    ? released.filter(c => (typeof colGet === 'function' ? colGet(state.collection, c) : 0) > 0).length : 0;
+  const total = released.length;
   const setTxt = (id, v) => { const el = document.getElementById(id); if(el) el.textContent = v; };
   setTxt('pp-stat-col', owned + (total ? (' / ' + total) : ''));
   setTxt('pp-stat-rare', String(st.holosPulled || 0));
@@ -648,14 +650,15 @@ function updatePacksBreakdown(){
 function updateUI(){
   const money = state.money.toFixed(2);
   const packs = state.packs;
-  const owned = CARDS.filter(c=>colGet(state.collection, c)>0).length;
+  const released = (typeof releasedCards === 'function') ? releasedCards() : CARDS;
+  const owned = released.filter(c=>colGet(state.collection, c)>0).length;
   const setText = (id, val)=>{ const el=document.getElementById(id); if(el) el.textContent=val; };
   setText('money', money);
   setText('packs', packs);
   setText('money-top', money);
   setText('packs-top', packs);
   setText('owned-count', owned);
-  setText('total-cards', CARDS.length);
+  setText('total-cards', released.length);
   if(typeof updateHomeDashboard === 'function') updateHomeDashboard();
   if(typeof updateCollectionProgress === 'function') updateCollectionProgress();
   updatePacksBreakdown();
@@ -684,8 +687,9 @@ function getRandomRarity(){
 }
 function pullCard(){
   const rarity=getRandomRarity();
-  const pool=CARDS.filter(c=>c.rarity===rarity);
-  return pool[Math.floor(Math.random()*pool.length)] || CARDS[0];
+  const source=(typeof releasedCards==='function')?releasedCards():CARDS;
+  const pool=source.filter(c=>c.rarity===rarity);
+  return pool[Math.floor(Math.random()*pool.length)] || source[0];
 }
 
 function tcgHTML(card, big){

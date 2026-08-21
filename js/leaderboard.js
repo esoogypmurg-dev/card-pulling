@@ -195,7 +195,7 @@ function paintLeaderboard(){
   // ----- Player rankings -----
   if(!lbCache) return;
 
-  const totalCards = (typeof CARDS !== 'undefined' && CARDS.length) ? CARDS.length : 0;
+  const totalCards = (typeof releasedCards === 'function') ? releasedCards().length : ((typeof CARDS !== 'undefined' && CARDS.length) ? CARDS.length : 0);
 
   const rows = lbCache.map(p => {
     const unique = lbUniqueCount(p.collection);
