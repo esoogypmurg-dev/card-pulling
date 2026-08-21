@@ -547,7 +547,10 @@ function buyShopPacks(qty){
   state.packs = state.packQueue.length;
   if(!state.stats) state.stats = {};
   state.stats.weekSpend = Math.round(((state.stats.weekSpend||0) + cost) * 100) / 100;
+  if(typeof bumpAchStat === 'function') bumpAchStat('marketPacksBought', qty);
+  if(typeof markMilestone === 'function') markMilestone('firstMarketPackBought');
   save(); updateUI();
+  if(typeof checkNewlyCompletedAchievements === 'function') checkNewlyCompletedAchievements();
   if(typeof updateOpenSetStatus === 'function') updateOpenSetStatus();
   // Guess the Pull Count — grow prize pool from real spend
   if(typeof gpcRecordSpend === 'function'){
@@ -685,6 +688,8 @@ function buyMysteryBox(){
   }
   lastPackCards = cards.slice();
   if(typeof recordPackOpenedStats === 'function') recordPackOpenedStats(cards, MYSTERY_BOX_SET);
+  if(typeof bumpAchStat === 'function') bumpAchStat('mysteryBoxesOpened', 1);
+  if(typeof markMilestone === 'function') markMilestone('firstMysteryBox');
   save(); updateUI();
   if(typeof updateMysteryBoxUI === 'function') updateMysteryBoxUI();
   if(cost > 0 && typeof gpcRecordSpend === 'function'){
@@ -713,10 +718,12 @@ function openMysteryBoxRevealModal(cards){
   const grid = document.getElementById('mb-reveal-grid');
   const hint = document.getElementById('mb-reveal-hint');
   const doneBtn = document.getElementById('mb-reveal-done-btn');
+  const againBtn = document.getElementById('mb-reveal-again-btn');
   if(box){ box.classList.remove('exploding'); box.style.display = ''; }
   if(grid) grid.innerHTML = '';
   if(hint) hint.style.display = '';
   if(doneBtn) doneBtn.style.display = 'none';
+  if(againBtn) againBtn.style.display = 'none';
   modal.classList.add('open');
 }
 
@@ -732,7 +739,29 @@ function mysteryBoxReveal(){
     renderMysteryBoxRevealGrid();
     const doneBtn = document.getElementById('mb-reveal-done-btn');
     if(doneBtn) doneBtn.style.display = '';
+    updateMysteryBoxRevealAgainBtn();
   }, 550);
+}
+
+// Lets a trainer chain straight into the next free/paid box from inside the reveal
+// modal itself, instead of closing out and re-opening the Shop's Mystery Box card.
+function updateMysteryBoxRevealAgainBtn(){
+  const againBtn = document.getElementById('mb-reveal-again-btn');
+  if(!againBtn) return;
+  if(!isMysteryBoxDay()){ againBtn.style.display = 'none'; return; }
+  const { freeLeft, paidLeft } = mysteryBoxRemaining();
+  if(freeLeft > 0){
+    againBtn.textContent = 'Open Another — Free';
+    againBtn.style.display = '';
+  } else if(paidLeft > 0){
+    againBtn.textContent = 'Buy Another — $' + mysteryBoxPrice().toFixed(0);
+    againBtn.style.display = '';
+  } else {
+    againBtn.style.display = 'none';
+  }
+}
+function mysteryBoxBuyAnother(){
+  buyMysteryBox();
 }
 
 function renderMysteryBoxRevealGrid(){
@@ -1167,10 +1196,10 @@ function renderBinder(){
   if(!shelf || !open) return;
   if(binderView === 'open' && binderSet){
     shelf.style.display = 'none';
-    open.style.display = 'block';
+    open.style.display = 'flex';
     renderBinderPages();
   } else {
-    shelf.style.display = 'block';
+    shelf.style.display = 'flex';
     open.style.display = 'none';
     renderBinderShelf();
   }

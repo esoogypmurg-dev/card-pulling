@@ -514,6 +514,17 @@ async function mailSend(){
       if(typeof renderCollection === 'function') renderCollection();
     }
 
+    if(!adminGrant){
+      if(typeof bumpAchStat === 'function') bumpAchStat('mailSent', 1);
+      if(typeof markMilestone === 'function') markMilestone('firstMailSent');
+      if(atts.length && giftWrap){
+        if(typeof bumpAchStat === 'function') bumpAchStat('giftsSent', 1);
+        if(typeof markMilestone === 'function') markMilestone('firstGiftSent');
+      }
+      if(typeof save === 'function') save();
+      if(typeof checkNewlyCompletedAchievements === 'function') checkNewlyCompletedAchievements();
+    }
+
     showToast('Mail sent!');
     mailTab = 'sent';
     mailShowTab('sent');

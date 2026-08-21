@@ -289,7 +289,9 @@ function gradeFromZoom(){
   if(!state.stats) state.stats = {};
   state.stats.gradesDone = (state.stats.gradesDone || 0) + 1;
   if(grade >= 10) state.stats.gradeTens = (state.stats.gradeTens || 0) + 1;
+  if(typeof markMilestone === 'function') markMilestone('firstGraded');
   save(); updateUI(); renderCollection(); renderBinder();
+  if(typeof checkNewlyCompletedAchievements === 'function') checkNewlyCompletedAchievements();
   // Jump to the new graded copy (sorted high-first in buildZoomCopies)
   zoomCopies = buildZoomCopies(id);
   zoomCopyIndex = Math.max(0, zoomCopies.findIndex(c => c.grade === grade));

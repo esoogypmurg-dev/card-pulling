@@ -77,6 +77,8 @@ async function liveJoinRoom(){
 }
 
 function enterLiveRoom(){
+  if(typeof bumpAchStat === 'function') bumpAchStat('tradeRoomEntries', 1);
+  if(typeof markMilestone === 'function') markMilestone('firstTradeRoomEntry');
   document.getElementById('live-trade-lobby').style.display = 'none';
   document.getElementById('live-trade-room').style.display = 'block';
   const badge = document.getElementById('live-trade-room-badge');
@@ -181,6 +183,39 @@ function liveInspectTableCard(e, cardId){
   else if(typeof openZoom === 'function') openZoom(card);
 }
 
+// Single-card value label for trade UIs — "?" until the price is researched,
+// so trades don't spoil a card's value ahead of the research mechanic.
+function tradeCardValueLabel(cardId){
+  const c = (typeof resolveCard === 'function' ? resolveCard(cardId) : null);
+  if(!c) return '';
+  if(typeof isPriceUnlocked === 'function' && isPriceUnlocked(cardId)){
+    return '$' + (Number(c.price)||0).toFixed(2);
+  }
+  return '? (unresearched)';
+}
+// Only counts cards whose price has been unlocked via research — matches the
+// game's hidden-price mechanic instead of just spoiling every card's value.
+function tradeOfferValueSummary(offer){
+  let total = 0, unknown = 0;
+  (offer||[]).forEach(o => {
+    const qty = o.qty || 1;
+    const c = (typeof resolveCard === 'function' ? resolveCard(o.cardId) : null);
+    if(c && typeof isPriceUnlocked === 'function' && isPriceUnlocked(o.cardId)){
+      total += (Number(c.price)||0) * qty;
+    } else {
+      unknown += qty;
+    }
+  });
+  return { total, unknown };
+}
+function tradeOfferValueLabel(offer){
+  if(!offer || !offer.length) return '';
+  const { total, unknown } = tradeOfferValueSummary(offer);
+  let label = '$' + total.toFixed(2);
+  if(unknown) label += ' + ' + unknown + ' unresearched';
+  return label;
+}
+
 function renderLiveOffers(){
   if(!liveRoom) return;
   const myOffer = liveIsCreator ? (liveRoom.creator_offer||[]) : (liveRoom.joiner_offer||[]);
@@ -202,6 +237,10 @@ function renderLiveOffers(){
     const theirBanner = theirAcc ? '<div class="tr-zone-accept-banner">✓ ACCEPTED</div>' : '';
     theirEl.innerHTML = theirBanner + (theirOffer.length ? theirOffer.map(o => liveOfferCardHtml(o, false)).join('') : '');
   }
+  const myValueEl = document.getElementById('tr-my-value');
+  if(myValueEl) myValueEl.textContent = tradeOfferValueLabel(myOffer);
+  const theirValueEl = document.getElementById('tr-their-value');
+  if(theirValueEl) theirValueEl.textContent = tradeOfferValueLabel(theirOffer);
 
   const youAcc = document.getElementById('live-you-accepted');
   const youNo = document.getElementById('tr-you-ready-no');
@@ -678,6 +717,9 @@ async function liveExecuteTrade(){
     msg.style.color = '#22c55e';
     state.stats = state.stats || {};
     state.stats.tradesCompleted = (Number(state.stats.tradesCompleted)||0) + 1;
+    const otherId = currentUser.id === creator.id ? joiner.id : creator.id;
+    if(typeof addAchStatSetMember === 'function') addAchStatSetMember('tradePartners', otherId);
+    if(typeof checkNewlyCompletedAchievements === 'function') checkNewlyCompletedAchievements();
     showToast('Trade complete!');
     await playTradeCollectAnimation(creatorOffer, joinerOffer);
     setTimeout(() => liveLeaveRoom(), 400);

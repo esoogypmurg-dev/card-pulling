@@ -140,8 +140,10 @@ function openOfflineTradeRequest(cardId){
   const theirGrades = (viewingPlayer.stats && viewingPlayer.stats.grades) || {};
   const theirCol = viewingPlayer.collection || {};
   const copies = theirCopyOptions(theirCol, theirGrades, cardId);
+  const wantValue = typeof tradeCardValueLabel === 'function' ? tradeCardValueLabel(cardId) : '';
   document.getElementById('ot-want-meta').textContent =
     (card.rarityLabel||card.rarity||'')+' · '+(card.set||'')+' · owned by '+(viewingPlayer.display_name||viewingPlayer.username)+
+    (wantValue ? (' · '+wantValue) : '')+
     (copies.length ? (' · '+copies.map(c=>c.label).join(', ')) : '');
   const copySel = document.getElementById('ot-want-copy');
   if(copySel){
@@ -175,14 +177,17 @@ function closeOfflineTradeModal(){
 
 function renderOtOfferChips(){
   const el = document.getElementById('ot-offer-chips');
+  const valueEl = document.getElementById('ot-offer-value');
   if(!el) return;
   if(!otOffer.length){
     el.innerHTML = '<span style="color:var(--muted);font-size:.82rem">Add at least one card you’re willing to give</span>';
+    if(valueEl) valueEl.textContent = '';
     return;
   }
   el.innerHTML = otOffer.map((o,i) => {
     return `<span class="trade-chip">${offerLabel(o)} <button type="button" onclick="otOffer.splice(${i},1);renderOtOfferChips()">✕</button></span>`;
   }).join('');
+  if(valueEl) valueEl.textContent = typeof tradeOfferValueLabel === 'function' ? ('Your offer: ' + tradeOfferValueLabel(otOffer)) : '';
 }
 
 function otAddOffer(){
@@ -292,13 +297,17 @@ function showIncomingTradeModal(req){
   document.getElementById('it-want-name').textContent = card
     ? (card.name + (wantGradeShow != null ? ' · PSA '+wantGradeShow : ''))
     : ('Card #'+req.want_card_id);
+  const itWantValue = card && typeof tradeCardValueLabel === 'function' ? tradeCardValueLabel(req.want_card_id) : '';
   document.getElementById('it-want-meta').textContent = card
-    ? ((card.rarityLabel||card.rarity)+' · '+(card.set||'')+(wantGradeShow!=null?' · graded copy':''))
+    ? ((card.rarityLabel||card.rarity)+' · '+(card.set||'')+(wantGradeShow!=null?' · graded copy':'')+(itWantValue?' · '+itWantValue:''))
     : '';
   const offers = Array.isArray(offerPayload) ? offerPayload : [];
-  document.getElementById('it-offer-list').innerHTML = offers.length
+  document.getElementById('it-offer-list').innerHTML = (offers.length
     ? offers.map(o => `<span class="trade-chip">${offerLabel(o)}</span>`).join('')
-    : '<span style="color:var(--muted)">No cards listed</span>';
+    : '<span style="color:var(--muted)">No cards listed</span>')
+    + (offers.length && typeof tradeOfferValueLabel === 'function'
+        ? '<div class="tr-side-value" style="display:block;margin-top:.4rem">Their offer: '+tradeOfferValueLabel(offers)+'</div>'
+        : '');
   const st = document.getElementById('it-status');
   if(st){ st.textContent = ''; st.style.color = 'var(--muted)'; }
   const btn = document.getElementById('it-accept-btn');
@@ -578,6 +587,12 @@ async function itAccept(){
 
     const myStats = Object.assign({}, me.stats || {}, { grades: myGrades });
     const theirStats = Object.assign({}, them.stats || {}, { grades: theirGrades });
+    myStats.tradesCompleted = (Number(myStats.tradesCompleted)||0) + 1;
+    theirStats.tradesCompleted = (Number(theirStats.tradesCompleted)||0) + 1;
+    myStats.tradePartners = Array.isArray(myStats.tradePartners) ? myStats.tradePartners.slice() : [];
+    if(!myStats.tradePartners.includes(String(req.from_user_id))) myStats.tradePartners.push(String(req.from_user_id));
+    theirStats.tradePartners = Array.isArray(theirStats.tradePartners) ? theirStats.tradePartners.slice() : [];
+    if(!theirStats.tradePartners.includes(String(currentUser.id))) theirStats.tradePartners.push(String(currentUser.id));
     const { error: upMe } = await sb.from('profiles').update({ collection: myCol, stats: myStats }).eq('id', currentUser.id);
     if(upMe) throw upMe;
     const { error: upThem } = await sb.from('profiles').update({ collection: theirCol, stats: theirStats }).eq('id', req.from_user_id);
@@ -593,10 +608,14 @@ async function itAccept(){
       if(n > 0) state.collection[toCardKey(k) || String(k)] = n;
     }
     state.grades = myGrades;
+    state.stats = state.stats || {};
+    state.stats.tradesCompleted = myStats.tradesCompleted;
+    state.stats.tradePartners = myStats.tradePartners;
     save();
     updateUI();
     renderCollection();
     renderBinder();
+    if(typeof checkNewlyCompletedAchievements === 'function') checkNewlyCompletedAchievements();
     showToast('Trade complete!');
     itDismiss();
   }catch(e){

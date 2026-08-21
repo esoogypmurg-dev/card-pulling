@@ -240,11 +240,14 @@ function tradeUpSubmit(){
   }
   colSet(state.collection, reward.id, (colGet(state.collection, reward.id) || 0) + 1);
   tuRecordTradeUp(tradeRarity);
+  if(typeof bumpAchStat === 'function') bumpAchStat('tradeUpsCompleted', 1);
+  if(typeof markMilestone === 'function') markMilestone('firstTradeUp');
 
   tuSelected = [];
   if(typeof save === 'function') save();
   if(typeof updateUI === 'function') updateUI();
   if(typeof renderCollection === 'function') renderCollection();
+  if(typeof checkNewlyCompletedAchievements === 'function') checkNewlyCompletedAchievements();
 
   const overlay = document.getElementById('tu-reward-overlay');
   const cardEl = document.getElementById('tu-reward-card');

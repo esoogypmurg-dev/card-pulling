@@ -441,8 +441,8 @@
             <div class="tr-table-wrap">
               <div class="tr-table">
                 <div class="tr-table-label">Live Trade</div>
-                <div class="tr-side-label top">THEIR SIDE</div>
-                <div class="tr-side-label bottom">YOUR SIDE</div>
+                <div class="tr-side-label top">THEIR SIDE <span class="tr-side-value" id="tr-their-value"></span></div>
+                <div class="tr-side-label bottom">YOUR SIDE <span class="tr-side-value" id="tr-my-value"></span></div>
                 <div class="tr-center-line"></div>
                 <div class="tr-zone top empty" id="live-their-offer"></div>
                 <div class="tr-zone bottom empty" id="live-my-offer"></div>
@@ -1334,6 +1334,16 @@
             <button class="btn" type="button" onclick="achGenerateForSet((document.getElementById('ach-admin-gen-set')||{}).value)">Generate standard achievements</button>
           </div>
         </div>
+        <div style="background:#0f1320;border:1px solid #2a314d;border-radius:10px;padding:.7rem .8rem;margin-bottom:1rem">
+          <h4 style="margin:0 0 .35rem;color:var(--gold);font-size:.9rem">📥 Import the 550-achievement draft</h4>
+          <p style="color:var(--muted);font-size:.78rem;margin:0 0 .55rem" id="ach-import-desc">
+            One-time bulk import of the full drafted catalog. Skips any id already in your catalog, so it's safe to
+            click again after adding more from the draft later. Most of these are auto-tracked in the background —
+            a smaller set (mostly novelty "Hidden" ones) still need an admin grant.
+          </p>
+          <button class="btn" type="button" onclick="achImportSeedCatalog()">Import draft catalog</button>
+          <span id="ach-import-msg" style="margin-left:.6rem;font-size:.82rem;color:var(--muted)"></span>
+        </div>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.55rem;margin-bottom:.55rem">
           <div>
             <label style="display:block;font-size:.75rem;color:var(--muted);margin-bottom:.2rem">Name</label>
@@ -1377,12 +1387,36 @@
               <option value="collection_value">Collection value ($)</option>
               <option value="best_pull_value">Best single pull value ($)</option>
               <option value="sets_completed">Sets fully completed</option>
+              <option value="stat">Background stat (auto-tracked)</option>
+              <option value="milestone">One-time milestone (auto-tracked)</option>
               <option value="manual">Manual (admin grant only)</option>
             </select>
           </div>
           <div>
             <label style="display:block;font-size:.75rem;color:var(--muted);margin-bottom:.2rem">Target</label>
             <input type="number" id="ach-admin-target" min="1" value="10" style="width:100%;padding:.45rem .55rem;border-radius:8px;border:1px solid #2a314d;background:#0f1320;color:var(--text)">
+          </div>
+          <div>
+            <label style="display:block;font-size:.75rem;color:var(--muted);margin-bottom:.2rem">Stat key (for "Background stat")</label>
+            <input type="text" id="ach-admin-statkey" list="ach-statkey-options" maxlength="60" placeholder="e.g. mysteryBoxesOpened" style="width:100%;padding:.45rem .55rem;border-radius:8px;border:1px solid #2a314d;background:#0f1320;color:var(--text)">
+            <datalist id="ach-statkey-options">
+              <option value="dailyClaimStreak"><option value="mysteryBoxesOpened"><option value="tradeUpsCompleted">
+              <option value="marketPacksBought"><option value="auctionsWon"><option value="auctionsListed">
+              <option value="giftsSent"><option value="mailSent"><option value="tradeRoomEntries">
+              <option value="uniqueTradePartners"><option value="rocketBattlesPlayed"><option value="dailyWheelSpins">
+              <option value="gradedCount"><option value="perfectGradedCount">
+              <option value="setDiversity"><option value="rarityDiversity"><option value="achievementsClaimed">
+            </datalist>
+          </div>
+          <div>
+            <label style="display:block;font-size:.75rem;color:var(--muted);margin-bottom:.2rem">Milestone key (for "One-time milestone")</label>
+            <input type="text" id="ach-admin-milestonekey" list="ach-milestonekey-options" maxlength="60" placeholder="e.g. firstMysteryBox" style="width:100%;padding:.45rem .55rem;border-radius:8px;border:1px solid #2a314d;background:#0f1320;color:var(--text)">
+            <datalist id="ach-milestonekey-options">
+              <option value="firstDailyClaim"><option value="firstMysteryBox"><option value="firstTradeUp">
+              <option value="firstMarketPackBought"><option value="firstAuctionWin"><option value="firstAuctionListed">
+              <option value="firstGiftSent"><option value="firstMailSent"><option value="firstTradeRoomEntry">
+              <option value="firstGraded"><option value="team_rocket_seen"><option value="daily_wheel_seen">
+            </datalist>
           </div>
           <div>
             <label style="display:block;font-size:.75rem;color:var(--muted);margin-bottom:.2rem">Set (optional)</label>
@@ -1941,6 +1975,7 @@
       <button class="btn btn-secondary" style="padding:.35rem .65rem;font-size:.78rem" onclick="otAddOffer()">+ Add</button>
     </div>
     <div class="tm-want-chips" id="ot-offer-chips"></div>
+    <div class="tr-side-value" id="ot-offer-value" style="display:block;margin:.2rem 0 .5rem"></div>
     <div class="tm-actions">
       <button class="btn" onclick="otSendRequest()">Send Trade Request</button>
       <button class="btn btn-close-modal" onclick="closeOfflineTradeModal()">Cancel</button>
@@ -2065,6 +2100,7 @@
       <img id="mb-reveal-box" class="mb-reveal-box" src="art/mystery-box-home.webp" alt="Mystery Box" onclick="mysteryBoxReveal()"/>
       <div id="mb-reveal-grid" class="mb-reveal-grid"></div>
       <div class="tm-actions" style="justify-content:center;margin-top:1.1rem">
+        <button class="btn btn-secondary" id="mb-reveal-again-btn" style="display:none" onclick="mysteryBoxBuyAnother()"></button>
         <button class="btn" id="mb-reveal-done-btn" style="display:none" onclick="closeMysteryBoxRevealModal()">Awesome!</button>
       </div>
     </div>
@@ -2261,12 +2297,23 @@
   </div>
 </div>
 <div id="market-sold-batch-modal" class="trade-modal" onclick="if(event.target===this)dismissMarketSoldBatchModal()">
-  <div class="ms-card" onclick="event.stopPropagation()">
-    <div class="ms-eyebrow">Market sales</div>
-    <h3 class="ms-title" id="msb-title">3 of your cards sold!</h3>
-    <div id="msb-list" style="max-height:260px;overflow-y:auto;text-align:left;margin:.6rem 0;display:flex;flex-direction:column;gap:.35rem"></div>
-    <div class="ms-price" id="msb-total">$0.00 total</div>
-    <button type="button" class="btn ms-btn" onclick="dismissMarketSoldBatchModal()">Nice!</button>
+  <div class="trade-modal-inner" onclick="event.stopPropagation()" style="max-width:460px;width:100%;background:linear-gradient(180deg,#16161c 0%,#0e1016 42%,#0b0d12 100%);border:1px solid rgba(255,203,5,.08);border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.35);overflow:hidden;padding:0">
+
+    <div class="ach-title-panel" style="margin:0;padding:1.05rem 1.35rem;border-radius:0;border-bottom:1px solid rgba(255,203,5,.14);background:linear-gradient(105deg,#1c1914 0%,#141210 48%,#12141a 100%)">
+      <div class="ach-title-row">
+        <div class="ach-title-main">
+          <div class="ach-eyebrow">Market Sales</div>
+          <h1 id="msb-title">Your cards sold!</h1>
+          <p>While you were away, the market moved these for you</p>
+        </div>
+      </div>
+    </div>
+
+    <div style="padding:1.1rem 1.35rem 1.35rem">
+      <div id="msb-list" style="max-height:260px;overflow-y:auto;text-align:left;margin:0 0 .85rem;display:flex;flex-direction:column;gap:.35rem"></div>
+      <div class="ms-price" id="msb-total" style="text-align:center">$0.00 total</div>
+      <button type="button" class="btn ms-btn" style="margin-top:.85rem" onclick="dismissMarketSoldBatchModal()">Nice!</button>
+    </div>
   </div>
 </div>
 <div id="app-update-modal" class="trade-modal" style="display:none;z-index:400" onclick="if(event.target===this)dismissAppUpdate()">
@@ -2324,6 +2371,7 @@
 <script src="js/teams.js"></script>
 <script src="js/mail.js"></script>
 <script src="js/trade-up.js"></script>
+<script src="js/achievements-seed-data.js"></script>
 <script src="js/achievements.js"></script>
 <script src="js/event-schedule.js"></script>
 <script src="js/home-banner.js"></script>

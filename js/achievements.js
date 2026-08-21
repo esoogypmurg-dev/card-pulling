@@ -116,6 +116,113 @@ function countCompletedSets(){
   });
   return n;
 }
+
+/* ========== Auto-tracked stats & one-time milestone flags ==========
+   Lets achievements reference any background-tracked number (goalType:'stat',
+   statKey:'x') or one-time action (goalType:'milestone', milestoneKey:'x')
+   without an admin ever having to manually grant them. New counters just need
+   one increment call at their trigger site (see markMilestone/bumpStat below)
+   plus, if the number isn't a plain state.stats field, a getter here. */
+function achSetDiversityCount(){
+  if(typeof SETS === 'undefined' || !SETS.length || typeof CARDS === 'undefined' || !state.collection) return 0;
+  let n = 0;
+  SETS.forEach(s => {
+    const has = CARDS.some(c => c.set === s.name && (typeof colGet === 'function' ? colGet(state.collection, c) : 0) > 0);
+    if(has) n++;
+  });
+  return n;
+}
+function achRarityDiversityCount(){
+  if(typeof CARDS === 'undefined' || !state.collection) return 0;
+  const rarities = new Set();
+  CARDS.forEach(c => {
+    if((typeof colGet === 'function' ? colGet(state.collection, c) : 0) > 0) rarities.add(c.rarity);
+  });
+  return rarities.size;
+}
+function achAchievementsClaimedCount(){
+  const claims = achEnsureClaims();
+  return Object.keys(claims).filter(id => claims[id] && claims[id].claimed).length;
+}
+const ACH_STAT_GETTERS = {
+  dailyClaimStreak: () => Number((state.stats||{}).dailyClaimStreak) || 0,
+  mysteryBoxesOpened: () => Number((state.stats||{}).mysteryBoxesOpened) || 0,
+  tradeUpsCompleted: () => Number((state.stats||{}).tradeUpsCompleted) || 0,
+  marketPacksBought: () => Number((state.stats||{}).marketPacksBought) || 0,
+  auctionsWon: () => Number((state.stats||{}).auctionsWon) || 0,
+  auctionsListed: () => Number((state.stats||{}).auctionsListed) || 0,
+  giftsSent: () => Number((state.stats||{}).giftsSent) || 0,
+  mailSent: () => Number((state.stats||{}).mailSent) || 0,
+  tradeRoomEntries: () => Number((state.stats||{}).tradeRoomEntries) || 0,
+  uniqueTradePartners: () => ((state.stats||{}).tradePartners || []).length,
+  eventsParticipated: () => Object.keys((state.stats||{}).eventsParticipated || {}).length,
+  setDiversity: () => achSetDiversityCount(),
+  rarityDiversity: () => achRarityDiversityCount(),
+  gradedCount: () => Number((state.stats||{}).gradesDone) || 0,
+  perfectGradedCount: () => Number((state.stats||{}).gradeTens) || 0,
+  achievementsClaimed: () => achAchievementsClaimedCount()
+};
+function achStatValue(key){
+  if(!key) return 0;
+  const getter = ACH_STAT_GETTERS[key];
+  if(getter) return Number(getter()) || 0;
+  return Number((state.stats||{})[key]) || 0;
+}
+/** One-time boolean flags for "first time you did X" achievements. */
+function achEnsureMilestones(){
+  if(!state.milestones || typeof state.milestones !== 'object') state.milestones = {};
+  return state.milestones;
+}
+function markMilestone(key){
+  if(!key) return;
+  const m = achEnsureMilestones();
+  if(m[key]) return;
+  m[key] = true;
+  if(typeof save === 'function') save();
+  if(typeof checkNewlyCompletedAchievements === 'function') checkNewlyCompletedAchievements();
+}
+/** Bump a simple counter stat (creates it at 0 if missing). */
+function bumpAchStat(key, amount){
+  if(!key) return;
+  if(!state.stats) state.stats = {};
+  state.stats[key] = (Number(state.stats[key]) || 0) + (amount || 1);
+}
+/** Add to a de-duplicated "set" stat stored as an array (e.g. unique trade partners). */
+function addAchStatSetMember(key, member){
+  if(!key || member == null) return;
+  if(!state.stats) state.stats = {};
+  if(!Array.isArray(state.stats[key])) state.stats[key] = [];
+  const s = String(member);
+  if(!state.stats[key].includes(s)) state.stats[key].push(s);
+}
+/** Mark participation in a named live event (Team Rocket, Wheel, etc.) — auto-tracks Events achievements. */
+function markEventParticipation(eventKey){
+  if(!eventKey) return;
+  if(!state.stats) state.stats = {};
+  if(!state.stats.eventsParticipated || typeof state.stats.eventsParticipated !== 'object') state.stats.eventsParticipated = {};
+  if(state.stats.eventsParticipated[eventKey]) return;
+  state.stats.eventsParticipated[eventKey] = true;
+  if(typeof save === 'function') save();
+  if(typeof checkNewlyCompletedAchievements === 'function') checkNewlyCompletedAchievements();
+}
+/** Called once per calendar day a Daily Free Pack is claimed — keeps a
+    consecutive-day streak so Streaks & Timing achievements need no admin grant. */
+function bumpDailyClaimStreak(){
+  if(!state.stats) state.stats = {};
+  const today = typeof todayKey === 'function' ? todayKey() : '';
+  const last = state.stats.dailyClaimStreakDate;
+  let streak = Number(state.stats.dailyClaimStreak) || 0;
+  if(last){
+    const prevDate = new Date(last + 'T00:00:00');
+    const curDate = new Date(today + 'T00:00:00');
+    const dayGap = Math.round((curDate - prevDate) / 86400000);
+    streak = dayGap === 1 ? streak + 1 : 1;
+  } else {
+    streak = 1;
+  }
+  state.stats.dailyClaimStreak = streak;
+  state.stats.dailyClaimStreakDate = today;
+}
 function achProgressValue(a){
   if(!a) return 0;
   const st = state.stats || {};
@@ -152,6 +259,11 @@ function achProgressValue(a){
   if(a.goalType === 'sets_completed'){
     if(typeof countCompletedSets === 'function') return countCompletedSets();
     return Number(st.setsCompleted) || 0;
+  }
+  if(a.goalType === 'stat') return achStatValue(a.statKey);
+  if(a.goalType === 'milestone'){
+    const m = achEnsureMilestones();
+    return m[a.milestoneKey] ? 1 : 0;
   }
   if(a.goalType === 'manual'){
     const c = achEnsureClaims()[a.id];
@@ -203,12 +315,26 @@ function achIsClaimed(id){
   const c = achEnsureClaims()[id];
   return !!(c && c.claimed);
 }
+// A few "own one of everything" / meta achievements have a target that grows
+// with the game (more sets, more rarities, more achievements added later) —
+// those omit `target` and are computed live here instead of a fixed number.
+function achEffectiveTarget(a){
+  if(a && a.target != null && a.target !== '') return Math.max(1, Number(a.target) || 1);
+  if(a && a.goalType === 'stat'){
+    if(a.statKey === 'setDiversity') return Math.max(1, (typeof SETS !== 'undefined' ? SETS.length : 1));
+    if(a.statKey === 'rarityDiversity'){
+      if(typeof CARDS === 'undefined') return 1;
+      return Math.max(1, new Set(CARDS.map(c => c.rarity)).size);
+    }
+    if(a.statKey === 'achievementsClaimed') return Math.max(1, achievementCatalog.length - 1);
+  }
+  return 1;
+}
 function achIsComplete(a){
-  const target = Math.max(1, Number(a.target) || 1);
-  return achProgressValue(a) >= target;
+  return achProgressValue(a) >= achEffectiveTarget(a);
 }
 function achRatio(a){
-  const target = Math.max(1, Number(a.target) || 1);
+  const target = achEffectiveTarget(a);
   return Math.min(100, Math.round(achProgressValue(a) / target * 100));
 }
 
@@ -321,7 +447,7 @@ function renderAchDetail(){
   const claimed = achIsClaimed(a.id);
   const complete = achIsComplete(a);
   const now = achProgressValue(a);
-  const target = Math.max(1, Number(a.target)||1);
+  const target = achEffectiveTarget(a);
   const rewards = [];
   if(Number(a.pts)) rewards.push(['✦', a.pts, 'Points']);
   if(Number(a.rewardMoney)) rewards.push(['💰', '$'+Number(a.rewardMoney).toFixed(2), 'Cash']);
@@ -477,6 +603,7 @@ function achAdminClearForm(){
   const s = document.getElementById('ach-admin-set'); if(s) s.value='';
   const r = document.getElementById('ach-admin-rarity'); if(r) r.value='';
   set('ach-admin-rarity-label','');
+  set('ach-admin-statkey',''); set('ach-admin-milestonekey','');
   const cat = document.getElementById('ach-admin-cat'); if(cat) cat.value='Collection';
   const goal = document.getElementById('ach-admin-goal'); if(goal) goal.value='packs_opened';
   const msg = document.getElementById('ach-admin-msg'); if(msg) msg.textContent='';
@@ -492,12 +619,13 @@ function achAdminEdit(id){
   const set = (elId,v) => { const el=document.getElementById(elId); if(el) el.value = (v==null?'':v); };
   set('ach-admin-name', a.name); set('ach-admin-icon', a.icon||'🏅'); set('ach-admin-desc', a.desc);
   set('ach-admin-cat', a.category||'Collection'); set('ach-admin-goal', a.goalType||'packs_opened');
-  set('ach-admin-target', a.target||1); set('ach-admin-pts', a.pts||0);
+  set('ach-admin-target', (a.target != null && a.target !== '') ? a.target : ''); set('ach-admin-pts', a.pts||0);
   set('ach-admin-money', a.rewardMoney||0); set('ach-admin-packs', a.rewardPacks||0);
   set('ach-admin-set', a.setFilter||''); set('ach-admin-rarity', a.rarityFilter||'');
   set('ach-admin-rarity-label', a.rarityLabelFilter||'');
   set('ach-admin-series', a.series||''); set('ach-admin-tier', a.tier||0);
   set('ach-admin-hidden', a.hiddenUntil||''); set('ach-admin-card', a.rewardCard||'');
+  set('ach-admin-statkey', a.statKey||''); set('ach-admin-milestonekey', a.milestoneKey||'');
   const btn = document.getElementById('ach-admin-savebtn'); if(btn) btn.textContent='Save changes';
   const cancelBtn = document.getElementById('ach-admin-cancelbtn'); if(cancelBtn) cancelBtn.style.display='';
   const msg = document.getElementById('ach-admin-msg');
@@ -512,7 +640,12 @@ function achAdminReadForm(){
   const desc = ((document.getElementById('ach-admin-desc')||{}).value||'').trim();
   const category = ((document.getElementById('ach-admin-cat')||{}).value||'Collection');
   const goalType = ((document.getElementById('ach-admin-goal')||{}).value||'packs_opened');
-  const target = Math.max(1, parseInt((document.getElementById('ach-admin-target')||{}).value,10)||1);
+  const targetRaw = ((document.getElementById('ach-admin-target')||{}).value||'').trim();
+  // Left blank on purpose for a handful of "own everything" stats whose target
+  // grows with the game (set/rarity diversity, achievements-claimed) — leave unset.
+  const target = targetRaw === '' ? undefined : Math.max(1, parseInt(targetRaw, 10) || 1);
+  const statKey = ((document.getElementById('ach-admin-statkey')||{}).value||'').trim();
+  const milestoneKey = ((document.getElementById('ach-admin-milestonekey')||{}).value||'').trim();
   const pts = Math.max(0, parseInt((document.getElementById('ach-admin-pts')||{}).value,10)||0);
   const rewardMoney = Math.max(0, parseFloat((document.getElementById('ach-admin-money')||{}).value)||0);
   const rewardPacks = Math.max(0, parseInt((document.getElementById('ach-admin-packs')||{}).value,10)||0);
@@ -523,7 +656,7 @@ function achAdminReadForm(){
   const tier = Math.max(0, parseInt((document.getElementById('ach-admin-tier')||{}).value,10)||0);
   const hiddenUntil = ((document.getElementById('ach-admin-hidden')||{}).value||'').trim();
   const rewardCard = ((document.getElementById('ach-admin-card')||{}).value||'').trim();
-  return { name, icon, desc, category, goalType, target, pts, rewardMoney, rewardPacks, setFilter, rarityFilter, rarityLabelFilter, series, tier, hiddenUntil, rewardCard };
+  return { name, icon, desc, category, goalType, target, pts, rewardMoney, rewardPacks, setFilter, rarityFilter, rarityLabelFilter, series, tier, hiddenUntil, rewardCard, statKey, milestoneKey };
 }
 function achAdminSave(){
   achLoadCatalog();
@@ -542,6 +675,9 @@ function achAdminSave(){
     if(!existing.tier) delete existing.tier;
     if(!existing.hiddenUntil) delete existing.hiddenUntil;
     if(!existing.rewardCard) delete existing.rewardCard;
+    if(existing.goalType !== 'stat' || !existing.statKey) delete existing.statKey;
+    if(existing.goalType !== 'milestone' || !existing.milestoneKey) delete existing.milestoneKey;
+    if(existing.target === undefined) delete existing.target;
     achSaveCatalog();
     if(msg){ msg.textContent='Updated "'+f.name+'"'; msg.style.color='#4ade80'; }
     achAdminClearForm();
@@ -558,6 +694,9 @@ function achAdminSave(){
   if(!a.tier) delete a.tier;
   if(!a.hiddenUntil) delete a.hiddenUntil;
   if(!a.rewardCard) delete a.rewardCard;
+  if(a.goalType !== 'stat' || !a.statKey) delete a.statKey;
+  if(a.goalType !== 'milestone' || !a.milestoneKey) delete a.milestoneKey;
+  if(a.target === undefined) delete a.target;
   achievementCatalog.push(a);
   achSaveCatalog();
   if(msg){ msg.textContent='Added "'+f.name+'"'; msg.style.color='#4ade80'; }
@@ -605,7 +744,9 @@ function achAdminRender(){
     '<div style="display:flex;gap:.65rem;align-items:flex-start;justify-content:space-between;padding:.6rem .7rem;border-radius:10px;border:1px solid #2a314d;background:#0f1320">'+
     '<div><div style="font-weight:700">'+achIconHtml(a.icon)+' '+String(a.name||'').replace(/</g,'&lt;')+
     ' <span style="color:var(--muted);font-weight:600;font-size:.78rem">· '+(a.category||'')+'</span></div>'+
-    '<div style="font-size:.78rem;color:var(--muted);margin-top:.2rem">'+String(a.goalType)+' ≥ '+a.target+
+    '<div style="font-size:.78rem;color:var(--muted);margin-top:.2rem">'+String(a.goalType)+' ≥ '+achEffectiveTarget(a)+
+    (a.statKey?(' · stat: '+a.statKey):'')+
+    (a.milestoneKey?(' · milestone: '+a.milestoneKey):'')+
     (a.setFilter?(' · set: '+a.setFilter):'')+
     (a.rarityLabelFilter?(' · rarity label: '+a.rarityLabelFilter):(a.rarityFilter?(' · rarity: '+a.rarityFilter):''))+
     (a.series?(' · series: '+a.series+' t'+a.tier):'')+
@@ -850,6 +991,36 @@ function achGenerateForSet(setName){
   const msg = document.getElementById('ach-admin-msg');
   if(msg){ msg.textContent = 'Generated ' + added + ' achievement(s) for ' + shortName; msg.style.color = '#4ade80'; }
   showToast('Generated ' + added + ' achievement(s) for ' + shortName);
+}
+
+/** One-time bulk import of the 550-achievement draft (js/achievements-seed-data.js).
+    Skips anything already in the catalog by id, so it's safe to click more than once. */
+function achImportSeedCatalog(){
+  if(!currentUser || !currentUser.is_admin){ showToast('Admin only'); return; }
+  const msg = document.getElementById('ach-import-msg');
+  if(typeof ACHIEVEMENTS_SEED === 'undefined' || !Array.isArray(ACHIEVEMENTS_SEED)){
+    if(msg){ msg.textContent = 'Seed data not loaded'; msg.style.color = '#f87171'; }
+    return;
+  }
+  achLoadCatalog();
+  const existing = new Set(achievementCatalog.map(a => a.id));
+  let added = 0;
+  ACHIEVEMENTS_SEED.forEach(a => {
+    if(existing.has(a.id)) return;
+    achievementCatalog.push(Object.assign({}, a));
+    existing.add(a.id);
+    added++;
+  });
+  if(!added){
+    if(msg){ msg.textContent = 'Already imported — nothing new to add'; msg.style.color = 'var(--muted)'; }
+    showToast('Draft catalog already imported');
+    return;
+  }
+  achSaveCatalog();
+  achAdminRender();
+  if(typeof renderAchievements === 'function') renderAchievements();
+  if(msg){ msg.textContent = 'Imported ' + added + ' achievement(s) from the draft.'; msg.style.color = '#4ade80'; }
+  showToast('Imported ' + added + ' achievement(s)');
 }
 
 // boot catalog

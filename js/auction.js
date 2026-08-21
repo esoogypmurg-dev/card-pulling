@@ -85,7 +85,10 @@ function listAuctionFromZoom(){
       };
       const { error } = await sb.from('auctions').insert(row);
       if(error) throw error;
+      if(typeof bumpAchStat === 'function') bumpAchStat('auctionsListed', 1);
+      if(typeof markMilestone === 'function') markMilestone('firstAuctionListed');
       save(); updateUI(); renderCollection(); renderBinder();
+      if(typeof checkNewlyCompletedAchievements === 'function') checkNewlyCompletedAchievements();
       showToast('Auction listed: '+card.name+' · starts $'+startBid.toFixed(2));
       if(typeof loadAuctions === 'function') loadAuctions();
       if((colGet(state.collection, id)) > 0) openZoom(card, 0);
@@ -486,7 +489,10 @@ async function resolveEndedAuctions(){
             state.money = +(state.money - price).toFixed(2);
             colSet(state.collection, cid, colGet(state.collection, cid) + 1);
             if(row.grade != null){ const g = getGrades(cid); g.push(Number(row.grade)); setGrades(cid, g); }
+            if(typeof bumpAchStat === 'function') bumpAchStat('auctionsWon', 1);
+            if(typeof markMilestone === 'function') markMilestone('firstAuctionWin');
             save(); updateUI(); renderCollection(); renderBinder();
+            if(typeof checkNewlyCompletedAchievements === 'function') checkNewlyCompletedAchievements();
             const card = resolveCard(cid);
             showToast('You won the auction: '+(card?card.name:'Card')+' for $'+price.toFixed(2));
           }

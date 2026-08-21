@@ -2908,6 +2908,7 @@ body.home-active .app-content::-webkit-scrollbar{display:none}
 .tr-table-label{position:absolute;top:22px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,.18);font-weight:900;letter-spacing:5px;text-transform:uppercase;font-size:.7rem}
 .tr-center-line{position:absolute;left:50%;top:12%;bottom:12%;border-left:1px dashed rgba(255,255,255,.09)}
 .tr-side-label{position:absolute;font-size:.65rem;color:rgba(255,255,255,.32);font-weight:800;letter-spacing:1px}
+.tr-side-value{color:var(--gold);letter-spacing:normal;margin-left:.4em}
 .tr-side-label.top{top:42px;left:50%;transform:translateX(-50%)}
 .tr-side-label.bottom{bottom:24px;left:50%;transform:translateX(-50%)}
 .tr-zone{position:absolute;left:50%;transform:translateX(-50%);width:min(82%,520px);height:38%;border:1px dashed rgba(255,255,255,.12);border-radius:14px;display:flex;align-items:center;justify-content:center;gap:10px;padding:14px;flex-wrap:wrap;overflow:auto}
@@ -3541,6 +3542,10 @@ body.open-active #open.panel.active{
 #market-sold-modal .ms-line{color:#e8eef8;font-size:.95rem;line-height:1.45;margin:0 0 .35rem}
 #market-sold-modal .ms-price{font-size:1.35rem;font-weight:900;color:#4ade80;margin:.5rem 0 1rem}
 #market-sold-modal .ms-btn{width:100%}
+#market-sold-batch-modal.trade-modal{display:none;z-index:12500}
+#market-sold-batch-modal.open{display:flex}
+#market-sold-batch-modal .ms-price{font-size:1.3rem;font-weight:900;color:#4ade80;margin:0}
+#market-sold-batch-modal .ms-btn{width:100%}
 /* ===== Live flash announcement (online only) ===== */
 #live-flash-announcement{
   display:none;position:fixed;inset:0;z-index:20000;

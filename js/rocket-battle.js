@@ -252,6 +252,9 @@ function rocketStartBattle(){
   const card = rb.wagerKey ? resolveCard(rb.wagerKey) : null;
   if(!card || !rb.opponent || rb.active) return;
 
+  if(typeof markEventParticipation === 'function') markEventParticipation('team_rocket');
+  if(typeof markMilestone === 'function') markMilestone('team_rocket_seen');
+  if(typeof bumpAchStat === 'function') bumpAchStat('rocketBattlesPlayed', 1);
   rb.active = true;
   rb.playerMaxHp = card.hp || 50;
   rb.playerHp = rb.playerMaxHp;

@@ -24,7 +24,10 @@ function claimDailyPack(){
   state.packs += 1;
   ensurePackQueue();
   state.packQueue.push(selectedOpenSet || 'Base Set');
+  if(typeof bumpDailyClaimStreak === 'function') bumpDailyClaimStreak();
+  if(typeof markMilestone === 'function') markMilestone('firstDailyClaim');
   save(); updateUI(); renderQuests();
+  if(typeof checkNewlyCompletedAchievements === 'function') checkNewlyCompletedAchievements();
   showToast('Daily free pack claimed! (+1 ' + (selectedOpenSet||'Base Set') + ' pack)');
 }
 

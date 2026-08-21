@@ -437,6 +437,9 @@ function applyDailyWheelReward(slot){
 function spinDailyWheel(){
   if(dwSpinning) return;
   if(!canSpinDailyWheel()){ showToast('Already spun today'); updateDailyWheelUI(); return; }
+  if(typeof markEventParticipation === 'function') markEventParticipation('daily_wheel');
+  if(typeof markMilestone === 'function') markMilestone('daily_wheel_seen');
+  if(typeof bumpAchStat === 'function') bumpAchStat('dailyWheelSpins', 1);
   if(!dwBuilt) buildDailyWheelVisual();
   const canvas = dwGetCanvas();
   if(!canvas) return;
