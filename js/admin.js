@@ -86,6 +86,9 @@ function adminShowSection(sec){
   if(sec === 'sets' && typeof setsAdminRender === 'function'){
     setsAdminRender();
   }
+  if(sec === 'recap' && typeof weeklyRecapPreview === 'function'){
+    weeklyRecapPreview();
+  }
 }
 
 function adminToggleAcc(btn){
@@ -418,5 +421,112 @@ async function setsAdminBulk(hidden){
   rows.forEach(s => { s.hidden = hidden; });
   if(msg){ msg.textContent = 'Updated ' + rows.length + ' set(s).'; msg.style.color = '#4ade80'; }
   setsAdminRender();
+}
+
+/* ========== Weekly Pull Stats Recap ========== */
+async function weeklyRecapFetchProfiles(){
+  const { data, error } = await sb.from('profiles').select('id, username, display_name, stats');
+  if(error) throw error;
+  return data || [];
+}
+
+function weeklyRecapBuildBulletin(profiles){
+  const rows = profiles.map(p => {
+    const st = p.stats || {};
+    return {
+      id: p.id,
+      name: p.display_name || p.username || 'Trainer',
+      packs: Number(st.weekPacksOpened) || 0,
+      spend: Number(st.weekSpend) || 0,
+      best: st.weekBestPull || null
+    };
+  }).filter(r => r.packs > 0 || r.spend > 0);
+
+  rows.sort((a,b) => b.packs - a.packs);
+
+  let overallBest = null;
+  rows.forEach(r => {
+    if(r.best && (!overallBest || r.best.price > overallBest.price)){
+      overallBest = { ...r.best, owner: r.name };
+    }
+  });
+
+  const dateLabel = new Date().toLocaleDateString(undefined, { month:'short', day:'numeric', year:'numeric' });
+  let body = `📊 WEEKLY PULL STATS — ${dateLabel}\n\n`;
+
+  if(!rows.length){
+    body += 'No pack activity since the last recap — quiet week!\n';
+  } else {
+    if(overallBest){
+      body += `🏆 Best pull of the week: ${overallBest.owner} — ${overallBest.name} ($${overallBest.price.toFixed(2)})\n\n`;
+    }
+    body += 'LEADERBOARD\n';
+    rows.forEach((r, i) => {
+      const bestTxt = r.best ? `best: ${r.best.name} ($${(Number(r.best.price)||0).toFixed(2)})` : 'best: —';
+      body += `${i+1}. ${r.name} — ${r.packs} pack${r.packs===1?'':'s'} opened, $${r.spend.toFixed(2)} spent, ${bestTxt}\n`;
+    });
+  }
+
+  return { subject: `📊 Weekly Pull Recap — ${dateLabel}`, body, rows, overallBest };
+}
+
+async function weeklyRecapPreview(){
+  const el = document.getElementById('recap-preview');
+  if(!el) return;
+  el.textContent = 'Loading…';
+  try{
+    const profiles = await weeklyRecapFetchProfiles();
+    const { body, rows } = weeklyRecapBuildBulletin(profiles);
+    el.innerHTML = '<pre style="white-space:pre-wrap;font-family:inherit;margin:0;background:#0f1320;border:1px solid #2a314d;border-radius:8px;padding:.65rem">'+
+      String(body).replace(/</g,'&lt;') + '</pre>' +
+      '<div style="margin-top:.4rem">' + rows.length + ' player(s) with activity this week.</div>';
+  }catch(e){
+    console.error(e);
+    el.textContent = 'Could not load preview: ' + (e.message||e);
+  }
+}
+
+async function weeklyRecapGenerate(){
+  if(!sb || !currentUser?.is_admin){ showToast('Admin only'); return; }
+  if(!confirm('Send this week\'s recap mail to every player and reset weekly counters?')) return;
+  const msg = document.getElementById('recap-msg');
+  if(msg){ msg.textContent = 'Sending…'; msg.style.color = 'var(--muted)'; }
+  try{
+    const profiles = await weeklyRecapFetchProfiles();
+    const { subject, body } = weeklyRecapBuildBulletin(profiles);
+
+    let sent = 0, failed = 0;
+    for(const p of profiles){
+      try{
+        const { error } = await sb.rpc('mail_send', {
+          p_to_user_id: p.id,
+          p_subject: subject,
+          p_body: body,
+          p_attachments: [],
+          p_gift_wrapped: false,
+          p_as_admin_grant: false
+        });
+        if(error) throw error;
+        sent++;
+      }catch(e){
+        console.warn('[recap] send failed for', p.id, e.message||e);
+        failed++;
+      }
+    }
+
+    // reset weekly counters for everyone, win or lose on send (avoids double-counting next week)
+    for(const p of profiles){
+      const st = { ...(p.stats||{}), weekPacksOpened: 0, weekSpend: 0, weekBestPull: null };
+      try{ await sb.from('profiles').update({ stats: st }).eq('id', p.id); }
+      catch(e){ console.warn('[recap] reset failed for', p.id, e.message||e); }
+    }
+
+    if(msg){ msg.textContent = 'Sent to ' + sent + ' player(s)' + (failed ? (', ' + failed + ' failed') : '') + '. Weekly counters reset.'; msg.style.color = '#4ade80'; }
+    showToast('Weekly recap sent to ' + sent + ' player(s)');
+    weeklyRecapPreview();
+  }catch(e){
+    console.error(e);
+    if(msg){ msg.textContent = 'Failed: ' + (e.message||e); msg.style.color = '#f87171'; }
+  }
 }
 

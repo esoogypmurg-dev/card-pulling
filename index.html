@@ -1184,6 +1184,11 @@
           <span class="admin-menu-label">Sets</span>
           <span class="admin-menu-sub">Show / hide sets</span>
         </button>
+        <button type="button" class="admin-menu-btn" data-admin-sec="recap" onclick="adminShowSection('recap')">
+          <span class="admin-menu-ico">📊</span>
+          <span class="admin-menu-label">Weekly Recap</span>
+          <span class="admin-menu-sub">Send pull stats mail</span>
+        </button>
       </div>
     </div>
 
@@ -1325,6 +1330,21 @@
         <div style="font-size:.78rem;color:var(--muted);margin-bottom:.5rem" id="sets-admin-count"></div>
         <div id="sets-admin-list" style="display:flex;flex-direction:column;gap:.4rem;max-height:520px;overflow-y:auto"></div>
         <div id="sets-admin-msg" style="margin-top:.5rem;font-size:.85rem;color:var(--muted)"></div>
+      </div>
+    </div>
+
+    <div class="admin-section" id="admin-sec-recap">
+      <div class="trade-box" style="margin-bottom:1.2rem;border-color:rgba(255,203,5,.4)">
+        <h3 style="color:var(--gold)">📊 Weekly Pull Stats Recap</h3>
+        <p style="color:var(--muted);font-size:.82rem;margin:0 0 .85rem">
+          Sends one bulletin mail to every player with a leaderboard of packs opened, money spent, and best pulls since the last recap. Resets everyone's weekly counters afterward.
+        </p>
+        <div id="recap-preview" style="font-size:.8rem;color:var(--muted);margin-bottom:.75rem"></div>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+          <button type="button" class="btn btn-secondary" onclick="weeklyRecapPreview()">Preview</button>
+          <button type="button" class="btn" onclick="weeklyRecapGenerate()">Generate &amp; send this week's recap</button>
+        </div>
+        <div id="recap-msg" style="margin-top:.6rem;font-size:.85rem;color:var(--muted)"></div>
       </div>
     </div>
 

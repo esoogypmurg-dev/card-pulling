@@ -544,6 +544,8 @@ function buyShopPacks(qty){
   ensurePackQueue();
   for(let i = 0; i < qty; i++) state.packQueue.push(setName);
   state.packs = state.packQueue.length;
+  if(!state.stats) state.stats = {};
+  state.stats.weekSpend = Math.round(((state.stats.weekSpend||0) + cost) * 100) / 100;
   save(); updateUI();
   if(typeof updateOpenSetStatus === 'function') updateOpenSetStatus();
   // Guess the Pull Count — grow prize pool from real spend

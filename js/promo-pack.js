@@ -659,6 +659,14 @@ function finishOpening(){
     const maxV = Math.max(0, ...(opening.cards||[]).map(c => Number(c.price)||0));
     state.stats.bestPullValue = Math.max(Number(state.stats.bestPullValue)||0, maxV);
   }catch(_){}
+  // week-scoped stats for the admin-generated Weekly Pull Stats Recap (reset when a recap is sent)
+  try{
+    state.stats.weekPacksOpened = (state.stats.weekPacksOpened||0) + 1;
+    const best = (opening.cards||[]).slice().sort((a,b) => (Number(b.price)||0) - (Number(a.price)||0))[0];
+    if(best && (!state.stats.weekBestPull || (Number(best.price)||0) > (Number(state.stats.weekBestPull.price)||0))){
+      state.stats.weekBestPull = { name: best.name, price: Number(best.price)||0, art: best.art||null, rarityLabel: best.rarityLabel||best.rarity||'' };
+    }
+  }catch(_){}
   if(typeof trackDaily === 'function'){
     trackDaily('packsOpened', 1);
     if(holos) trackDaily('holos', holos);
